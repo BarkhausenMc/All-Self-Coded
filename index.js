@@ -5,7 +5,8 @@ const {
     ActionRowBuilder,
     ButtonBuilder,
     ButtonStyle,
-    StringSelectMenuBuilder EmbedBuilder } = require('discord.js');
+    StringSelectMenuBuilder
+} = require('discord.js');
 require('dotenv').config();
 
 const client = new Client({
