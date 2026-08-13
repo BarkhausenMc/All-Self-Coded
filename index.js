@@ -20,16 +20,17 @@ client.once('ready', async () => {
             .setDescription('Mein erstes Embed.')
 .addFields(
 
-{'Man kann folgende sachen einbauen: /n
-```setTitle()/n
-setDescription()/n
-setColor()/n
-setThumbnail()/n
-setImage()/n
-addFields()/n
-setFooter()/n
-setTimestamp()/n
-setAuthor()/n
+{ name: 'Man kann folgende sachen einbauen:',
+
+value: ```setTitle()\n
+setDescription()|n
+setColor()\n
+setThumbnail()|n
+setImage()\n
+addFields()\n
+setFooter()\n
+setTimestamp()\n
+setAuthor()\n
 setURL()```'}
 )
              };
