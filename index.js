@@ -35,10 +35,16 @@ client.once('ready', async () => {
             .setLabel('Bot Anleitung')          // Text auf dem Button
             .setStyle(ButtonStyle.Primary)         // Blau/Lila Farbe
             .setEmoji('📁');                       // Optional: Emoji drauf
+
+const button = new ButtonBuilder()
+    .setCustomId('bot-ticket')
+    .setLabel('Bot Ticket')
+    .setStyle(ButtonStyle.Secondary)
+    .setEmoji('🎫');
 // --- Button in eine Action Row packen ---
         // Jede Action Row kann max 5 Components halten
         const row = new ActionRowBuilder()
-            .addComponents(button);
+            .addComponents(button1, button2);
 
         channel.send({ embeds: [embed], components: [row] });
     } else {
