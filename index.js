@@ -10,7 +10,7 @@ const client = new Client({
 client.once('ready', async () => {
     console.log('Bot ist online!');
 
-    const channel = client.channels.cache(1537389571103522868);
+    const channel = client.channels.cache.get('1537389571103522868');
 
     if (channel) {
         // --- Embed erstellen ---
