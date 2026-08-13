@@ -13,30 +13,14 @@ client.once('ready', async () => {
     const channel = client.channels.cache.get('1537389571103522868');
 
     if (channel) {
-        // --- Embed erstellen ---
         const embed = new EmbedBuilder()
-            .setColor(0x6d4aff)                    // Lila Streifen links
-            .setTitle('**Erstes Test Embed!**?')
+            .setColor(0x6d4aff)
+            .setTitle('Erstes Test Embed!')
             .setDescription('Mein erstes Embed.')
-.addFields(
+            .addFields(
+                { name: 'Verfügbare Methoden', value: 'setTitle()\nsetDescription()\nsetColor()\nsetThumbnail()\nsetImage()\naddFields()\nsetFooter()\nsetTimestamp()' }
+            );
 
-{ name: 'Man kann folgende sachen einbauen:',
-
-value: '```
-setTitle()\n
-setDescription()|n
-setColor()\n
-setThumbnail()|n
-setImage()\n
-addFields()\n
-setFooter()\n
-setTimestamp()\n
-setAuthor()\n
-setURL()```'}
-)
-             };
-
-        // --- Embed senden ---
         channel.send({ embeds: [embed] });
     } else {
         console.log('Channel nicht gefunden!');
