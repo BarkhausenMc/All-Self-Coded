@@ -16,9 +16,11 @@ client.once('ready', async () => {
         // --- Embed erstellen ---
         const embed = new EmbedBuilder()
             .setColor(0x6d4aff)                    // Lila Streifen links
-            .setTitle('**Erstes Test Embed!*?')
-            .setDescription('Mein erstes Embed. /n
-Man kann folgende sachen einbauen: /n
+            .setTitle('**Erstes Test Embed!**?')
+            .setDescription('Mein erstes Embed.')
+.addFields(
+
+{Man kann folgende sachen einbauen: /n
 ```setTitle()/n
 setDescription()/n
 setColor()/n
@@ -28,15 +30,9 @@ addFields()/n
 setFooter()/n
 setTimestamp()/n
 setAuthor()/n
-setURL()```')
-            
-            .addFields(
-                { name: 'Spieler online', value: '42', inline: true },
-                { name: 'Server-Region', value: 'EU-West', inline: true },
-                { name: 'Nächstes Event', value: 'Heute 20 Uhr', inline: false }
-            )
-            
-            });
+setURL()```'}
+)
+             };
 
         // --- Embed senden ---
         channel.send({ embeds: [embed] });
