@@ -17,18 +17,25 @@ client.once('ready', async () => {
         const embed = new EmbedBuilder()
             .setColor(0x6d4aff)                    // Lila Streifen links
             .setTitle('**Erstes Test Embed!*?')
-            .setDescription('Das ist die **Beschreibung**.\nDu kannst hier *Markdown* nutzen.')
-            .setThumbnail('https://example.com/thumbnail.png')
+            .setDescription('Mein erstes Embed. /n
+Man kann folgende sachen einbauen: /n
+```setTitle()/n
+setDescription()/n
+setColor()/n
+setThumbnail()/n
+setImage()/n
+addFields()/n
+setFooter()/n
+setTimestamp()/n
+setAuthor()/n
+setURL()```')
+            
             .addFields(
                 { name: 'Spieler online', value: '42', inline: true },
                 { name: 'Server-Region', value: 'EU-West', inline: true },
                 { name: 'Nächstes Event', value: 'Heute 20 Uhr', inline: false }
             )
-            .setImage('https://example.com/banner.png')
-            .setTimestamp()
-            .setFooter({ 
-                text: 'Powered by Flo',
-                iconURL: 'https://example.com/footer-icon.png'
+            
             });
 
         // --- Embed senden ---
