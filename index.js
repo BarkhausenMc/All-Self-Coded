@@ -1,4 +1,11 @@
-const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
+const {
+    Client,
+    GatewayIntentBits,
+    EmbedBuilder,
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle,
+    StringSelectMenuBuilder EmbedBuilder } = require('discord.js');
 require('dotenv').config();
 
 const client = new Client({
@@ -20,6 +27,17 @@ client.once('ready', async () => {
             .addFields(
                 { name: 'Folgende sachen können in ein Embed eingebaut werden:', value: 'setTitle()\nsetDescription()\nsetColor()\nsetThumbnail()\nsetImage()\naddFields()\nsetFooter()\nsetTimestamp()' }
             );
+
+// --- Button erstellen ---
+        const button = new ButtonBuilder()
+            .setCustomId('anleitung')           // Wichtig: ID um Klick zu erkennen
+            .setLabel('Bot Anleitung')          // Text auf dem Button
+            .setStyle(ButtonStyle.Primary)         // Blau/Lila Farbe
+            .setEmoji('📁');                       // Optional: Emoji drauf
+// --- Button in eine Action Row packen ---
+        // Jede Action Row kann max 5 Components halten
+        const row = new ActionRowBuilder()
+            .addComponents(button);
 
         channel.send({ embeds: [embed] });
     } else {
