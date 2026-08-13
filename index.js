@@ -16,12 +16,7 @@ client.once('ready', async () => {
         // --- Embed erstellen ---
         const embed = new EmbedBuilder()
             .setColor(0x6d4aff)                    // Lila Streifen links
-            .setTitle('Willkommen auf dem Server!')
-            .setURL('https://example.com')          // Titel wird klickbar
-            .setAuthor({ 
-                name: 'Bot Name',
-                iconURL: 'https://example.com/icon.png'
-            })
+            .setTitle('**Erstes Test Embed!*?')
             .setDescription('Das ist die **Beschreibung**.\nDu kannst hier *Markdown* nutzen.')
             .setThumbnail('https://example.com/thumbnail.png')
             .addFields(
