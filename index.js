@@ -10,7 +10,7 @@ const client = new Client({
 client.once('ready', async () => {
     console.log('Bot ist online!');
 
-    const channel = client.channels.cache.get('DEINE_CHANNEL_ID_HIER');
+    const channel = client.channels.cache.get('1537389571103522868');
 
     if (channel) {
         await channel.send('Hallo von meinem Bot!');
