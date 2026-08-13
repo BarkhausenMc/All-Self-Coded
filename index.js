@@ -18,7 +18,7 @@ client.once('ready', async () => {
             .setTitle('Erstes Test Embed!')
             .setDescription('Mein erstes Embed.')
             .addFields(
-                { name: 'Verfügbare Methoden', value: 'setTitle()\nsetDescription()\nsetColor()\nsetThumbnail()\nsetImage()\naddFields()\nsetFooter()\nsetTimestamp()' }
+                { name: 'Folgende sachen können in ein Embed eingebaut werden:', value: 'setTitle()\nsetDescription()\nsetColor()\nsetThumbnail()\nsetImage()\naddFields()\nsetFooter()\nsetTimestamp()' }
             );
 
         channel.send({ embeds: [embed] });
