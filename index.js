@@ -22,7 +22,8 @@ client.once('ready', async () => {
 
 { name: 'Man kann folgende sachen einbauen:',
 
-value: '```setTitle()\n
+value: '```
+setTitle()\n
 setDescription()|n
 setColor()\n
 setThumbnail()|n
