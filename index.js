@@ -23,11 +23,8 @@ client.once('ready', async () => {
     if (channel) {
         const embed = new EmbedBuilder()
             .setColor(0x6d4aff)
-            .setTitle('Erstes Test Embed!')
-            .setDescription('Mein erstes Embed.')
-            .addFields(
-                { name: 'Folgende sachen können in ein Embed eingebaut werden:', value: 'setTitle()\nsetDescription()\nsetColor()\nsetThumbnail()\nsetImage()\naddFields()\nsetFooter()\nsetTimestamp()' }
-            );
+            .setTitle('Bot Anleitung')
+            .setDescription('Wie man einen Discord Bot erstellt.')
 
         const button = new ButtonBuilder()
             .setCustomId('anleitung')
@@ -53,7 +50,7 @@ client.on('interactionCreate', async (interaction) => {
             // Dropdown erstellen
             const selectMenu = new StringSelectMenuBuilder()
                 .setCustomId('anleitung_auswahl')
-                .setPlaceholder('Wähle ein Thema...')
+                .setPlaceholder('Wähle eine Anleitung...')
                 .setMinValues(1)
                 .setMaxValues(1)
                 .addOptions(
@@ -97,7 +94,7 @@ client.on('interactionCreate', async (interaction) => {
             const selected = interaction.values[0];
 
             await interaction.reply({
-                content: `Du hast **${selected}** gewählt!`,
+                content: `Test`,
                 ephemeral: true
             });
         }
