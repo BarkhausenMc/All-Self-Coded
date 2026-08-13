@@ -40,7 +40,7 @@ client.once('ready', async () => {
         const row = new ActionRowBuilder()
             .addComponents(button);
 
-        channel.send({ embeds: [embed] });
+        channel.send({ embeds: [embed], components: [row] });
     } else {
         console.log('Channel nicht gefunden!');
     }
