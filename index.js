@@ -13,7 +13,7 @@ client.once('ready', async () => {
     const channel = client.channels.cache.get('1537389571103522868');
 
     if (channel) {
-        await channel.send('Hallo von meinem Bot!');
+        await channel.send('```Hallo von meinem Bot!```');
     } else {
         console.log('Channel nicht gefunden!');
     }
