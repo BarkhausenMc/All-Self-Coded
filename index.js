@@ -23,21 +23,25 @@ client.once('ready', async () => {
     if (channel) {
 const embed = new EmbedBuilder()
   .setColor(0x1a1a1a)
-  .setTitle('💎 SPAWNER PREISE 💎')
+  .setTitle('VOID Market — HUGOSMP')
   .setDescription(
-    '**VOID Market — HUGOSMP**\n\n' +
-    '💰 **ANKAUF** — Wir kaufen deinen Spawner — so viel bekommst du\n' +
-    '🛒 **VERKAUF** — Wir verkaufen dir einen Spawner — so viel zahlst du\n\n' +
-    '```\n' +
-    'SPAWNER        ANKAUF      VERKAUF\n' +
-    '────────────────────────────────────\n' +
-    '👾 Creeper      6.0M        9.0M\n' +
-    '🤖 Iron Golem   5.0M        STOP\n' +
-    '💀 Skelly       9.5M        STOP\n' +
-    '```'
+    '**━━━━━━━━━━━ 💎 SPAWNER PREISE 💎 ━━━━━━━━━━━**\n\n' +
+    '────────────────────────────────────────\n' +
+    '**💰 ANKAUF** — Wir kaufen deinen Spawner — so viel bekommst du\n' +
+    '────────────────────────────────────────\n' +
+    '**🛒 VERKAUF** — Wir verkaufen dir einen Spawner — so viel zahlst du\n' +
+    '────────────────────────────────────────\n\n' +
+    '**SPAWNER** │ **ANKAUF** │ **VERKAUF**\n' +
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
+    '👾 Creeper    │ 6.0M       │ 9.0M\n' +
+    '🤖 Iron Golem │ 5.0M       │ ⛔ STOP\n' +
+    '💀 Skelly     │ 9.5M       │ ⛔ STOP\n' +
+    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+    '*Wir versuchen immer faire und optimale Preise anzubieten.* ❤️\n' +
+    '_Wähle eine Option, um direkt zu handeln 👇_'
   )
   .setFooter({
-    text: 'Wir versuchen immer faire und optimale Preise anzubieten. ❤️  •  Wähle eine Option, um direkt zu handeln 👇'
+    text: 'Powered by VoidClan • Admin-Approved'
   });
 
         const button = new ButtonBuilder()
