@@ -86,9 +86,9 @@ client.on('interactionCreate', async (interaction) => {
     if (interaction.isButton()) {
         if (interaction.customId === 'spawner_verkaufen') {
             const container = new ContainerBuilder()
-                .setAccentColor(0x00FF00) // Grün für Verkauf
+                
                 .addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent('## 🛒 VERKAUFEN\n*Wähle deinen Spawner*')
+                    new TextDisplayBuilder().setContent('## 💰 Spawner Verkaufen\nWelche Spawner möchtest du Verkaufen')
                 )
                 .addSeparatorComponents(
                     new SeparatorBuilder().setDivider(true).setSpacing(1)
@@ -99,10 +99,10 @@ client.on('interactionCreate', async (interaction) => {
                             .setCustomId('select_sell_spawner')
                             .setPlaceholder('Welchen Spawner verkaufst du?')
                             .addOptions([
-                                { label: '💀 Skeleton', value: 'skeleton_sell', emoji: '💀' },
-                                { label: '💥 Creeper', value: 'creeper_sell', emoji: '💥' },
-                                { label: '🤖 Iron Golem', value: 'iron_golem_sell', emoji: '🤖' }
-                            ])
+                                { label: '💀 Skeleton', description: 'Du erhältst 10.0M', value: 'skeleton_sell' },
+                                { label: '💥 Creeper', description: 'Du erhältst 10.0M', value: 'creeper_sell' },
+                                { label: '🤖 Iron Golem', description: 'Du erhältst 10.0M', value: 'iron_golem_sell' }
+                            ]),
                     )
                 );
 
@@ -115,9 +115,9 @@ client.on('interactionCreate', async (interaction) => {
 
         if (interaction.customId === 'spawner_ankaufen') {
             const container = new ContainerBuilder()
-                .setAccentColor(0x6d4aff) // Lila für Ankauf
+                
                 .addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent('## 💰 ANKAUFEN\n*Wähle deinen Spawner*')
+                    new TextDisplayBuilder().setContent('## 🛒 Spawner Ankaufen\nWelchen Spawner möchtest du Kaufen?')
                 )
                 .addSeparatorComponents(
                     new SeparatorBuilder().setDivider(true).setSpacing(1)
@@ -126,12 +126,12 @@ client.on('interactionCreate', async (interaction) => {
                     new ActionRowBuilder().addComponents(
                         new StringSelectMenuBuilder()
                             .setCustomId('select_buy_spawner')
-                            .setPlaceholder('Welchen Spawner kaufst du?')
+                            .setPlaceholder('Welchen Spawner möchtest du kaufen?')
                             .addOptions([
-                                { label: '💀 Skeleton', value: 'skeleton_buy', emoji: '💀' },
-                                { label: '💥 Creeper', value: 'creeper_buy', emoji: '💥' },
-                                { label: '🤖 Iron Golem', value: 'iron_golem_buy', emoji: '🤖' }
-                            ])
+                                { label: '💀 Skeleton', description: 'Du bezahlst 8.0M', value: 'skeleton_buy' },
+                                { label: '💥 Creeper', description: 'Du bezahlst 9.0M', value: 'creeper_buy' },
+                                { label: '🤖 Iron Golem', description: 'Du bezahlst 7.0M', value: 'iron_golem_buy' }
+                            ]),
                     )
                 );
 
