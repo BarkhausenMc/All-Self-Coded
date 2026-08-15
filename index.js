@@ -58,9 +58,23 @@ client.once('ready', async () => {
                 new SeparatorBuilder().setDivider(true).setSpacing(1)
             )
             .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent('Klicke unten auf den `**💰 VERKAUFEN**` oder `**🛒 ANKAUF**` Button, um einen Trade zu Starten.\nWir versuchen immer faire und optimale Preise anzubieten.')
+                new TextDisplayBuilder().setContent('Klicke unten auf den `💰 VERKAUFEN` oder `🛒 ANKAUF` Button, um einen Trade zu Starten.\nWir versuchen immer faire und optimale Preise anzubieten.')
             )
 
+            .addActionRowComponents(
+    new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId('spawner_verkaufen')
+            .setLabel('VERKAUFEN')
+            .setStyle(ButtonStyle.Success)
+            .setEmoji('💰'),
+        new ButtonBuilder()
+            .setCustomId('spawner_ankaufen')
+            .setLabel('ANKAUF')
+            .setStyle(ButtonStyle.Primary)
+            .setEmoji('🛒')
+    )
+)
         channel.send({
             components: [container],
             flags: MessageFlags.IsComponentsV2
