@@ -85,66 +85,109 @@ client.on('interactionCreate', async (interaction) => {
 
     if (interaction.isButton()) {
         if (interaction.customId === 'spawner_verkaufen') {
-            const sellMenu = new StringSelectMenuBuilder()
-                .setCustomId('select_sell_spawner')
-                .setPlaceholder('Welchen Spawner verkaufst du? 🛒')
-                .setMinValues(1)
-                .setMaxValues(1)
-                .addOptions([
-                    { label: '💀 Skeleton', description: 'Verkauf für 10.0M', value: 'skeleton_sell', emoji: '💀' },
-                    { label: '💥 Creeper', description: 'Verkauf für 10.0M', value: 'creeper_sell', emoji: '💥' },
-                    { label: '🤖 Iron Golem', description: 'Verkauf für 10.0M', value: 'iron_golem_sell', emoji: '🤖' }
-                ]);
-
-            const menuRow = new ActionRowBuilder().addComponents(sellMenu);
+            const container = new ContainerBuilder()
+                .setAccentColor(0x00FF00) // Grün für Verkauf
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent('## 🛒 VERKAUFEN\n*Wähle deinen Spawner*')
+                )
+                .addSeparatorComponents(
+                    new SeparatorBuilder().setDivider(true).setSpacing(1)
+                )
+                .addActionRowComponents(
+                    new ActionRowBuilder().addComponents(
+                        new StringSelectMenuBuilder()
+                            .setCustomId('select_sell_spawner')
+                            .setPlaceholder('Welchen Spawner verkaufst du?')
+                            .addOptions([
+                                { label: '💀 Skeleton', value: 'skeleton_sell', emoji: '💀' },
+                                { label: '💥 Creeper', value: 'creeper_sell', emoji: '💥' },
+                                { label: '🤖 Iron Golem', value: 'iron_golem_sell', emoji: '🤖' }
+                            ])
+                    )
+                );
 
             await interaction.reply({
-                content: '**Verkaufen** — Wähle deinen Spawner:',
-                components: [menuRow],
+                components: [container],
+                flags: MessageFlags.IsComponentsV2,
                 ephemeral: true
             });
         }
 
         if (interaction.customId === 'spawner_ankaufen') {
-            const buyMenu = new StringSelectMenuBuilder()
-                .setCustomId('select_buy_spawner')
-                .setPlaceholder('Welchen Spawner kaufst du? 💰')
-                .setMinValues(1)
-                .setMaxValues(1)
-                .addOptions([
-                    { label: '💀 Skeleton', description: 'Kauf für 8.0M', value: 'skeleton_buy', emoji: '💀' },
-                    { label: '💥 Creeper', description: 'Kauf für 9.0M', value: 'creeper_buy', emoji: '💥' },
-                    { label: '🤖 Iron Golem', description: 'Kauf für 7.0M', value: 'iron_golem_buy', emoji: '🤖' }
-                ]);
-
-            const menuRow = new ActionRowBuilder().addComponents(buyMenu);
+            const container = new ContainerBuilder()
+                .setAccentColor(0x6d4aff) // Lila für Ankauf
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent('## 💰 ANKAUFEN\n*Wähle deinen Spawner*')
+                )
+                .addSeparatorComponents(
+                    new SeparatorBuilder().setDivider(true).setSpacing(1)
+                )
+                .addActionRowComponents(
+                    new ActionRowBuilder().addComponents(
+                        new StringSelectMenuBuilder()
+                            .setCustomId('select_buy_spawner')
+                            .setPlaceholder('Welchen Spawner kaufst du?')
+                            .addOptions([
+                                { label: '💀 Skeleton', value: 'skeleton_buy', emoji: '💀' },
+                                { label: '💥 Creeper', value: 'creeper_buy', emoji: '💥' },
+                                { label: '🤖 Iron Golem', value: 'iron_golem_buy', emoji: '🤖' }
+                            ])
+                    )
+                );
 
             await interaction.reply({
-                content: '**Ankaufen** — Wähle deinen Spawner:',
-                components: [menuRow],
+                components: [container],
+                flags: MessageFlags.IsComponentsV2,
                 ephemeral: true
             });
         }
         return;
     }
 
+    // Select Menu Handler bleibt gleich
     if (interaction.isStringSelectMenu()) {
         if (interaction.customId === 'select_sell_spawner') {
-            const [spawnerId, action] = interaction.values[0].split('_');
+            const [spawnerId] = interaction.values[0].split('_');
             const name = spawnerId.charAt(0).toUpperCase() + spawnerId.slice(1);
 
+            const successContainer = new ContainerBuilder()
+                .setAccentColor(0x00FF00)
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(`## ✅ VERKAUF BESTÄTIGT\nDu hast **${name}** erfolgreich verkauft.`)
+                )
+                .addSeparatorComponents(
+                    new SeparatorBuilder().setDivider(true).setSpacing(1)
+                )
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent('Geld wurde gutgeschrieben. ❤️')
+                );
+
             await interaction.reply({
-                content: `**Verkauf bestätigt!**\nDu hast **${name}** verkauft.`,
+                components: [successContainer],
+                flags: MessageFlags.IsComponentsV2,
                 ephemeral: true
             });
         }
 
         if (interaction.customId === 'select_buy_spawner') {
-            const [spawnerId, action] = interaction.values[0].split('_');
+            const [spawnerId] = interaction.values[0].split('_');
             const name = spawnerId.charAt(0).toUpperCase() + spawnerId.slice(1);
 
+            const successContainer = new ContainerBuilder()
+                .setAccentColor(0xFF0000)
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(`## ✅ KAUF BESTÄTIGT\nDu hast **${name}** erfolgreich gekauft.`)
+                )
+                .addSeparatorComponents(
+                    new SeparatorBuilder().setDivider(true).setSpacing(1)
+                )
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent('Geld wurde abgebucht. ❤️')
+                );
+
             await interaction.reply({
-                content: `**Kauf bestätigt!**\nDu hast **${name}** gekauft.`,
+                components: [successContainer],
+                flags: MessageFlags.IsComponentsV2,
                 ephemeral: true
             });
         }
