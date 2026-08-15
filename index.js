@@ -342,6 +342,9 @@ client.on('interactionCreate', async (interaction) => {
             return;
         }
 
+        // SOFORT antworten bevor irgendwas anderes gemacht wird
+        await interaction.deferReply({ ephemeral: true });
+
         const pricePerUnit = action === 'sell' ? spawner.buyPrice : spawner.sellPrice;
         const totalPrice = pricePerUnit * amount;
 
@@ -405,9 +408,9 @@ client.on('interactionCreate', async (interaction) => {
             flags: MessageFlags.IsComponentsV2
         });
 
-        await interaction.reply({
-            content: '✅ Ticket erstellt! Ein Team-Mitglied kümmert sich gleich darum.',
-            ephemeral: true
+        // Am Ende die deferred Reply editieren
+        await interaction.editReply({
+            content: '✅ Ticket erstellt! Ein Team-Mitglied kümmert sich gleich darum.'
         });
     }
 });
