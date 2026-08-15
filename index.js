@@ -63,15 +63,15 @@ client.once('ready', async () => {
 
             const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
-        .setCustomId('spawner_verkaufen')
-        .setLabel('VERKAUFEN')
-        .setStyle(ButtonStyle.Success)
-        .setEmoji('💰'),
-    new ButtonBuilder()
-        .setCustomId('spawner_ankaufen')
-        .setLabel('ANKAUF')
+        .setCustomId('spawner_ankauf')
+        .setLabel('Spawner Kaufen')
         .setStyle(ButtonStyle.Primary)
-        .setEmoji('🛒')
+        .setEmoji('🛒'),
+    new ButtonBuilder()
+        .setCustomId('spawner_verkaufen')
+        .setLabel('Spawner Verkaufen')
+        .setStyle(ButtonStyle.Success)
+        .setEmoji('💰')
 );
 
 channel.send({
