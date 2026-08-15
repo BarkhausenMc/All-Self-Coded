@@ -27,7 +27,7 @@ client.once('ready', async () => {
         const container = new ContainerBuilder()
             .setAccentColor(0x1a1a1a)
             .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent('## 💀 SPAWNER PREISE 💀\n*Yayks Spawner Tarding — HUGOSMP*')
+                new TextDisplayBuilder().setContent('## 📈 SPAWNER PREISE 📉\n*Yayks Spawner Tarding*')
             )
             .addSeparatorComponents(
                 new SeparatorBuilder().setDivider(true).setSpacing(1)
@@ -36,7 +36,7 @@ client.once('ready', async () => {
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
                     '```\n' +
-                    'SPAWNER        ANKAUF      VERKAUF\n' +
+                    'SPAWNER      🛒ANKAUF    💰 VERKAUF\n' +
                     '────────────────────────────────────\n' +
                     '💀 Skeleton      10.0M        8.0M\n' +
                     '💥 Creeper       10.0M        9.0M\n' +
@@ -45,6 +45,9 @@ client.once('ready', async () => {
                 )
             )
 
+            .addSeparatorComponents(
+                new SeparatorBuilder().setDivider(true).setSpacing(1)
+            )
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent('💰 **ANKAUF** — Wir kaufen deinen Spawner')
             )
