@@ -23,10 +23,12 @@ client.once('ready', async () => {
     if (channel) {
         const embed = new EmbedBuilder()
             .setColor(0x6d4aff)
-            .setTitle('Erstes Test Embed!')
-            .setDescription('Mein erstes Embed.')
+            .setTitle('💀 Spawner Tarding 💀')
+            .setDescription('*Yayks Spawner Trading - HugoSMP*')
             .addFields(
-                { name: 'Folgende sachen können in ein Embed eingebaut werden:', value: 'setTitle()\nsetDescription()\nsetColor()\nsetThumbnail()\nsetImage()\naddFields()\nsetFooter()\nsetTimestamp()' }
+                { name: '**💰 ANKAUF **', value: 'Wir kaufen deinen Spawner' },
+                {name: '**🛒 VERKAUF**', value: ' Wir verkaufen dir einen Spawner'},
+                {name:'', value:'```Spawner    Ankauf      Verkauf```'}
             );
 
         const button = new ButtonBuilder()
