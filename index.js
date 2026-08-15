@@ -299,7 +299,7 @@ client.on('interactionCreate', async (interaction) => {
         return;
     }
 
-        // --- THREAD BUTTONS (Claim + Close) ---
+               // --- THREAD BUTTONS (Claim + Close) ---
     if (interaction.isButton() && interaction.channel.type === ChannelType.PrivateThread) {
 
         if (interaction.customId === 'claim_ticket') {
@@ -321,7 +321,8 @@ client.on('interactionCreate', async (interaction) => {
                     )
                 );
 
-            await interaction.message.edit({
+            // Als SEPARATE Nachricht im Thread senden statt editieren
+            await interaction.channel.send({
                 components: [claimedContainer],
                 flags: MessageFlags.IsComponentsV2
             });
@@ -378,16 +379,16 @@ client.on('interactionCreate', async (interaction) => {
     // --- CLOSE CONFIRM/CANCEL ---
     if (interaction.isButton() && (interaction.customId === 'confirm_close' || interaction.customId === 'cancel_close')) {
         if (interaction.customId === 'cancel_close') {
-            await interaction.update({
+            await interaction.reply({
                 content: '❌ Abgebrochen.',
-                components: []
+                ephemeral: true
             });
             return;
         }
 
-        await interaction.update({
+        await interaction.reply({
             content: '✅ Ticket wird in 5 Sekunden geschlossen...',
-            components: []
+            ephemeral: true
         });
 
         setTimeout(async () => {
@@ -397,5 +398,3 @@ client.on('interactionCreate', async (interaction) => {
 });
 
 client.login(process.env.DISCORD_TOKEN);
-
-
