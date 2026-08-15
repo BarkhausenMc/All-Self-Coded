@@ -1,11 +1,14 @@
 const {
     Client,
     GatewayIntentBits,
-    EmbedBuilder,
     ActionRowBuilder,
     ButtonBuilder,
     ButtonStyle,
-    StringSelectMenuBuilder
+    StringSelectMenuBuilder,
+    ContainerBuilder,
+    TextDisplayBuilder,
+    SeparatorBuilder,
+    MessageFlags
 } = require('discord.js');
 require('dotenv').config();
 
@@ -21,39 +24,57 @@ client.once('ready', async () => {
     const channel = client.channels.cache.get('1537389571103522868');
 
     if (channel) {
-const embed = new EmbedBuilder()
-  .setColor(0x1a1a1a)
-  .setTitle('VOID Market — HUGOSMP')
-  .setDescription(
-    '**━━━━━━━━━━━ 💎 SPAWNER PREISE 💎 ━━━━━━━━━━━**\n\n' +
-    '────────────────────────────────────────\n' +
-    '**💰 ANKAUF** — Wir kaufen deinen Spawner — so viel bekommst du\n' +
-    '────────────────────────────────────────\n' +
-    '**🛒 VERKAUF** — Wir verkaufen dir einen Spawner — so viel zahlst du\n' +
-    '────────────────────────────────────────\n\n' +
-    '**SPAWNER** │ **ANKAUF** │ **VERKAUF**\n' +
-    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
-    '👾 Creeper    │ 6.0M       │ 9.0M\n' +
-    '🤖 Iron Golem │ 5.0M       │ ⛔ STOP\n' +
-    '💀 Skelly     │ 9.5M       │ ⛔ STOP\n' +
-    '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
-    '*Wir versuchen immer faire und optimale Preise anzubieten.* ❤️\n' +
-    '_Wähle eine Option, um direkt zu handeln 👇_'
-  )
-  .setFooter({
-    text: 'Powered by VoidClan • Admin-Approved'
-  });
+        const container = new ContainerBuilder()
+            .setAccentColor(0x1a1a1a)
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent('## 💎 SPAWNER PREISE 💎\n**VOID Market — HUGOSMP**')
+            )
+            .addSeparatorComponents(
+                new SeparatorBuilder().setDivider(true).setSpacing(1)
+            )
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent('💰 **ANKAUF** — Wir kaufen deinen Spawner — so viel bekommst du')
+            )
+            .addSeparatorComponents(
+                new SeparatorBuilder().setDivider(true).setSpacing(1)
+            )
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent('🛒 **VERKAUF** — Wir verkaufen dir einen Spawner — so viel zahlst du')
+            )
+            .addSeparatorComponents(
+                new SeparatorBuilder().setDivider(true).setSpacing(1)
+            )
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(
+                    '```\n' +
+                    'SPAWNER        ANKAUF      VERKAUF\n' +
+                    '────────────────────────────────────\n' +
+                    '👾 Creeper      6.0M        9.0M\n' +
+                    '🤖 Iron Golem   5.0M        STOP\n' +
+                    '💀 Skelly       9.5M        STOP\n' +
+                    '```'
+                )
+            )
+            .addSeparatorComponents(
+                new SeparatorBuilder().setDivider(true).setSpacing(1)
+            )
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent('Wir versuchen immer faire und optimale Preise anzubieten. ❤️\nWähle eine Option, um direkt zu handeln 👇')
+            )
+            .addActionRowComponents(
+                new ActionRowBuilder().addComponents(
+                    new ButtonBuilder()
+                        .setCustomId('anleitung')
+                        .setLabel('Bot Anleitung')
+                        .setStyle(ButtonStyle.Primary)
+                        .setEmoji('📁')
+                )
+            );
 
-        const button = new ButtonBuilder()
-            .setCustomId('anleitung')
-            .setLabel('Bot Anleitung')
-            .setStyle(ButtonStyle.Primary)
-            .setEmoji('📁');
-
-        const row = new ActionRowBuilder()
-            .addComponents(button);
-
-        channel.send({ embeds: [embed], components: [row] });
+        channel.send({
+            components: [container],
+            flags: MessageFlags.IsComponentsV2
+        });
     } else {
         console.log('Channel nicht gefunden!');
     }
@@ -108,64 +129,49 @@ client.on('interactionCreate', async (interaction) => {
 
             const selected = interaction.values[0];
 
-            // --- JE NACH WAHL UNTERSCHIEDLICHES EMBED ---
-            let replyEmbed;
+            let replyContent = '';
 
             if (selected === 'embeds') {
-                replyEmbed = new EmbedBuilder()
-                    .setColor(0x6d4aff)
-                    .setTitle('Embeds erstellen 🎨')
-                    .setDescription('So baust du ein Embed auf:')
-                    .addFields(
-                        { name: 'Basis-Code', value: '```js\nconst embed = new EmbedBuilder()\n    .setTitle(\"Mein Titel\")\n    .setDescription(\"Inhalt\")\n    .setColor(0x6d4aff);\n```' },
-                        { name: 'Wichtige Methoden', value: '.setTitle()\n.setDescription()\n.setColor()\n.setThumbnail()\n.setImage()\n.addFields()\n.setFooter()' },
-                        { name: 'Limitierungen', value: '- Titel: max 256 Zeichen\n- Description: max 4096 Zeichen\n- Max 25 Fields' }
-                    )
-                    .setFooter({ text: 'Probier es mal aus!' });
-
+                replyContent =
+                    '## 🎨 Embeds erstellen\n' +
+                    'So baust du ein Embed auf:\n\n' +
+                    '**Basis-Code:**\n' +
+                    '```js\nconst embed = new EmbedBuilder()\n    .setTitle("Mein Titel")\n    .setDescription("Inhalt")\n    .setColor(0x6d4aff);\n```\n\n' +
+                    '**Wichtige Methoden:**\n.setTitle()\n.setDescription()\n.setColor()\n.setThumbnail()\n.setImage()\n.addFields()\n.setFooter()\n\n' +
+                    '**Limitierungen:**\n- Titel: max 256 Zeichen\n- Description: max 4096 Zeichen\n- Max 25 Fields\n\n' +
+                    '*Probier es mal aus!*';
             } else if (selected === 'buttons') {
-                replyEmbed = new EmbedBuilder()
-                    .setColor(0x00FF00)
-                    .setTitle('Buttons erstellen 🔘')
-                    .setDescription('Buttons machen deinen Bot interaktiv!')
-                    .addFields(
-                        { name: 'Schritt 1: Button bauen', value: '```js\nconst button = new ButtonBuilder()\n    .setCustomId(\"unique_id\")\n    .setLabel(\"Click mich\")\n    .setStyle(ButtonStyle.Primary);\n```' },
-                        { name: 'Schritt 2: In Row packen', value: '```js\nconst row = new ActionRowBuilder()\n    .addComponents(button);\n```' },
-                        { name: 'Schritt 3: Senden', value: '```js\nawait channel.send({\n    content: \"Nachricht\",\n    components: [row]\n});\n```' },
-                        { name: 'Button Styles', value: '**Primary**: Lila/Blau\n**Success**: Grün\n**Danger**: Rot\n**Secondary**: Grau\n**Link**: Öffnet URL' }
-                    )
-                    .setFooter({ text: 'Eigene CustomId vergeben um Klicks zu erkennen!' });
-
+                replyContent =
+                    '## 🔘 Buttons erstellen\n' +
+                    'Buttons machen deinen Bot interaktiv!\n\n' +
+                    '**Schritt 1: Button bauen**\n' +
+                    '```js\nconst button = new ButtonBuilder()\n    .setCustomId("unique_id")\n    .setLabel("Click mich")\n    .setStyle(ButtonStyle.Primary);\n```\n\n' +
+                    '**Schritt 2: In Row packen**\n' +
+                    '```js\nconst row = new ActionRowBuilder()\n    .addComponents(button);\n```\n\n' +
+                    '**Schritt 3: Senden**\n' +
+                    '```js\nawait channel.send({\n    content: "Nachricht",\n    components: [row]\n});\n```\n\n' +
+                    '**Button Styles:**\n**Primary**: Lila/Blau\n**Success**: Grün\n**Danger**: Rot\n**Secondary**: Grau\n**Link**: Öffnet URL\n\n' +
+                    '*Eigene CustomId vergeben um Klicks zu erkennen!*';
             } else if (selected === 'commands') {
-                replyEmbed = new EmbedBuilder()
-                    .setColor(0xFFA500)
-                    .setTitle('Slash Commands ⌨️')
-                    .setDescription('Commande wie `/help` oder `/ban` sind cool und einfach!')
-                    .addFields(
-                        { name: 'Vorteile von Slash Commands', value: '✅ Automatische Autocomplete\n✅ Bessere UX als Text-Commands\n✅ Discord zeigt dir Hilfe an' },
-                        { name: 'Grundgerüst', value: '```js\napp.commands.create({\n    name: \"ping\",\n    description: \"Antwortet mit Pong!\",\n    options: []\n});\n```' },
-                        { name: 'Deploy Kommando', value: 'Benutze `deploy-commands.js` um Commands global oder auf deinem Server zu registrieren.' }
-                    )
-                    .setFooter({ text: 'Slash Commands brauchen andere Intents!' });
-
+                replyContent =
+                    '## ⌨️ Slash Commands\n' +
+                    'Commands wie `/help` oder `/ban` sind cool und einfach!\n\n' +
+                    '**Vorteile:**\n✅ Automatische Autocomplete\n✅ Bessere UX als Text-Commands\n✅ Discord zeigt dir Hilfe an\n\n' +
+                    '**Grundgerüst:**\n' +
+                    '```js\napp.commands.create({\n    name: "ping",\n    description: "Antwortet mit Pong!",\n    options: []\n});\n```\n\n' +
+                    '**Deploy Kommando:**\nBenutze `deploy-commands.js` um Commands global oder auf deinem Server zu registrieren.\n\n' +
+                    '*Slash Commands brauchen andere Intents!*';
             } else {
-                // FALL SOLLTE WAS NICHT GEPAFT HABEN
-                replyEmbed = new EmbedBuilder()
-                    .setColor(0xFF0000)
-                    .setTitle('Ups!')
-                    .setDescription('Diese Auswahl wurde noch nicht erstellt.');
+                replyContent = '## Ups!\nDiese Auswahl wurde noch nicht erstellt.';
             }
 
-            // Antwornte mit dem generierten Embed schicken
             await interaction.update({
-                content: '',  // Leer lassen, da wir nur das Embed zeigen wollen
-                embeds: [replyEmbed],
-                components: []  // Dropdown entfernen nach Auswahl
+                content: replyContent,
+                components: [],
+                ephemeral: true
             });
-
         }
     }
-
 });
 
 client.login(process.env.DISCORD_TOKEN);
