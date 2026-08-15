@@ -39,7 +39,7 @@ client.once('ready', async () => {
                     '────────────────────────────────────\n' +
                     '💀 Skeleton      10.0M        8.0M\n' +
                     '💥 Creeper       10.0M        9.0M\n' +
-                    '🤖 Iron Golem    10.0M        7.0M\n' +
+                    '🤖 Iron Golem    10.0M        67.0M\n' +
                     '```'
                 )
             )
