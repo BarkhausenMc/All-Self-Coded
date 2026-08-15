@@ -57,7 +57,9 @@ client.once('ready', async () => {
             .addSeparatorComponents(
                 new SeparatorBuilder().setDivider(true).setSpacing(1)
             )
-
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent('Klicke unten auf den ``` 💰 VERKAUFEN ``` oder ```🛒 ANKAUF``` Button.\nWir versuchen immer faire und optimale Preise anzubieten. ❤️')
+            )
 
         channel.send({
             components: [container],
