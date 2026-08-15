@@ -379,20 +379,19 @@ client.on('interactionCreate', async (interaction) => {
                 .setEmoji('🔒')
         );
 
-        const accentColor = action === 'sell' ? 0x00FF00 : 0x6d4aff;
-        const titleText = action === 'sell' ? 'VERKAUFSTICKET' : 'ANKAUFSTICKET';
+        
+        const titleText = action === 'sell' ? 'Spawner Verkauf Ticket' : 'Spawner Ankauf Ticket';
 
         const threadContainer = new ContainerBuilder()
             .setAccentColor(accentColor)
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
                     `## 📝 ${titleText} ERSTELLT\n` +
-                    `**Minecraft Name:** ${mcUsername}\n` +
-                    `**Spawner:** ${spawner.emoji} ${spawner.name}\n` +
-                    `**Menge:** ${amount}x\n` +
-                    `**Stückpreis:** ${formatMoney(pricePerUnit)}\n` +
-                    `**Gesamtpreis:** ${formatMoney(totalPrice)}\n\n` +
-                    `*Warte auf Admin-Freigabe...*`
+                    `**👤 Minecraft Name:** ${mcUsername}\n` +
+                    `**💀 Spawner:** ${spawner.emoji} ${spawner.name}\n` +
+                    `**📦 Menge:** ${amount}x\n` +
+                    `**💵 Stückpreis:** ${formatMoney(pricePerUnit)}\n` +
+                    `**💰 Gesamtpreis:** ${formatMoney(totalPrice)}\n\n` 
                 )
             )
             .addSeparatorComponents(
