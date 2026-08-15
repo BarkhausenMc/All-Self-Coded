@@ -30,7 +30,6 @@ client.once('ready', async () => {
     const channel = client.channels.cache.get('1537389571103522868');
 
     if (channel) {
-        // Tabelle bauen aus config.json
         let priceTable = '```\nSPAWNER      🛒ANKAUF    💰VERKAUF\n────────────────────────────────────\n';
         spawnerData.spawners.forEach(spawner => {
             priceTable += `${spawner.emoji} ${spawner.name.padEnd(12)} ${formatMoney(spawner.buyPrice).padStart(10)}   ${formatMoney(spawner.sellPrice).padStart(10)}\n`;
@@ -88,10 +87,8 @@ client.once('ready', async () => {
 
 client.on('interactionCreate', async (interaction) => {
 
-    // --- BUTTONS ---
     if (interaction.isButton()) {
-        
-        // Main Panel Buttons
+
         if (interaction.customId === 'spawner_verkaufen') {
             const options = spawnerData.spawners.map(spawner => ({
                 label: `${spawner.emoji} ${spawner.name}`,
@@ -154,7 +151,6 @@ client.on('interactionCreate', async (interaction) => {
             return;
         }
 
-        // Thread Claim Button
         if (interaction.customId === 'claim_ticket') {
             if (!interaction.member.roles.cache.has(spawnerData.traderRoleId)) {
                 await interaction.reply({
@@ -186,7 +182,6 @@ client.on('interactionCreate', async (interaction) => {
             return;
         }
 
-        // Thread Close Button
         if (interaction.customId === 'close_ticket') {
             const creatorId = interaction.channel.ownerId;
             const isTrader = interaction.member.roles.cache.has(spawnerData.traderRoleId);
@@ -228,7 +223,6 @@ client.on('interactionCreate', async (interaction) => {
             return;
         }
 
-        // Close Confirm/Cancel Buttons
         if (interaction.customId === 'confirm_close') {
             await interaction.reply({
                 content: '✅ Ticket wird in 5 Sekunden geschlossen...',
@@ -252,7 +246,6 @@ client.on('interactionCreate', async (interaction) => {
         return;
     }
 
-    // --- SELECT MENUS ---
     if (interaction.isStringSelectMenu()) {
         if (interaction.customId === 'select_sell_spawner') {
             const [spawnerId] = interaction.values[0].split('_');
@@ -331,7 +324,6 @@ client.on('interactionCreate', async (interaction) => {
         }
     }
 
-    // --- MODAL SUBMIT ---
     if (interaction.isModalSubmit()) {
         const customId = interaction.customId;
         const [, action, spawnerId] = customId.split('_');
@@ -382,12 +374,12 @@ client.on('interactionCreate', async (interaction) => {
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setCustomId('claim_ticket')
-                .setLabel('✅ Ticket Claimen')
+                .setLabel('Ticket Claimen')
                 .setStyle(ButtonStyle.Success)
                 .setEmoji('🔐'),
             new ButtonBuilder()
                 .setCustomId('close_ticket')
-                .setLabel('❌ Ticket Schließen')
+                .setLabel('Ticket Schließen')
                 .setStyle(ButtonStyle.Danger)
                 .setEmoji('🔒')
         );
