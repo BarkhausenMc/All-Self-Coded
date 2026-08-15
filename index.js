@@ -324,13 +324,22 @@ client.on('interactionCreate', async (interaction) => {
         }
     }
 
-    if (interaction.isModalSubmit()) {
+        if (interaction.isModalSubmit()) {
         const customId = interaction.customId;
         const [, action, spawnerId] = customId.split('_');
         const spawner = spawnerData.spawners.find(s => s.id === spawnerId);
 
         if (!spawner) {
-            await interaction.reply({ content: '❌ Spawner nicht gefunden.', ephemeral: true });
+            const errorContainer = new ContainerBuilder()
+                .setAccentColor(0xFF0000)
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent('## ❌ FEHLER\n**Spawner nicht gefunden**')
+                );
+            await interaction.reply({
+                components: [errorContainer],
+                flags: MessageFlags.IsComponentsV2,
+                ephemeral: true
+            });
             return;
         }
 
@@ -338,11 +347,20 @@ client.on('interactionCreate', async (interaction) => {
         const amount = parseInt(interaction.fields.getTextInputValue('amount'));
 
         if (isNaN(amount) || amount <= 0) {
-            await interaction.reply({ content: '❌ Ungültige Anzahl.', ephemeral: true });
+            const errorContainer = new ContainerBuilder()
+                .setAccentColor(0xFF0000)
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent('## ❌ FEHLER\n**Ungültige Anzahl angegeben**')
+                );
+            await interaction.reply({
+                components: [errorContainer],
+                flags: MessageFlags.IsComponentsV2,
+                ephemeral: true
+            });
             return;
         }
 
-        // SOFORT antworten bevor irgendwas anderes gemacht wird
+        // Defer um Timeouts zu vermeiden
         await interaction.deferReply({ ephemeral: true });
 
         const pricePerUnit = action === 'sell' ? spawner.buyPrice : spawner.sellPrice;
@@ -380,18 +398,19 @@ client.on('interactionCreate', async (interaction) => {
         );
 
         const accentColor = action === 'sell' ? 0x00FF00 : 0x6d4aff;
-        const titleText = action === 'sell' ? 'Spawner Verkauf Ticket' : 'Spawner Ankauf Ticket';
+        const titleText = action === 'sell' ? 'VERKAUFSTICKET' : 'ANKAUFSTICKET';
 
         const threadContainer = new ContainerBuilder()
             .setAccentColor(accentColor)
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
                     `## 📝 ${titleText} ERSTELLT\n` +
-                    `**👤 Minecraft Name:** ${mcUsername}\n` +
-                    `**💀 Spawner:** ${spawner.emoji} ${spawner.name}\n` +
-                    `**📦 Menge:** ${amount}x\n` +
-                    `**💵 Stückpreis:** ${formatMoney(pricePerUnit)}\n` +
-                    `**💰 Gesamtpreis:** ${formatMoney(totalPrice)}\n\n` 
+                    `**Minecraft Name:** ${mcUsername}\n` +
+                    `**Spawner:** ${spawner.emoji} ${spawner.name}\n` +
+                    `**Menge:** ${amount}x\n` +
+                    `**Stückpreis:** ${formatMoney(pricePerUnit)}\n` +
+                    `**Gesamtpreis:** ${formatMoney(totalPrice)}\n\n` +
+                    `*Warte auf Admin-Freigabe...*`
                 )
             )
             .addSeparatorComponents(
@@ -407,9 +426,18 @@ client.on('interactionCreate', async (interaction) => {
             flags: MessageFlags.IsComponentsV2
         });
 
-        // Am Ende die deferred Reply editieren
+        // Ephemeral Erfolgsmeldung als V2 Container
+        const successContainer = new ContainerBuilder()
+            .setAccentColor(0x00FF00)
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(
+                    `## ✅ TICKET ERSTELLT\n**Ein Team-Mitglied kümmert sich gleich darum.**`
+                )
+            );
+
         await interaction.editReply({
-            content: '✅ Ticket erstellt! Ein Team-Mitglied kümmert sich gleich darum.'
+            components: [successContainer],
+            flags: MessageFlags.IsComponentsV2
         });
     }
 });
