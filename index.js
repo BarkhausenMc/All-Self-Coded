@@ -23,7 +23,7 @@ client.once('ready', async () => {
     if (channel) {
         const embed = new EmbedBuilder()
             .setColor(0x6d4aff)
-            .setTitle('💀 Spawner Tarding 💀')
+            .setTitle('# 💀 Spawner Tarding 💀')
             .setDescription('*Yayks Spawner Trading - HugoSMP*')
             .addFields(
                 { name: '**💰 ANKAUF **', value: 'Wir kaufen deinen Spawner' },
