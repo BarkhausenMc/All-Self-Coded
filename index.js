@@ -154,7 +154,7 @@ client.on('interactionCreate', async (interaction) => {
 
     // --- SELECT MENUS ---
     if (interaction.isStringSelectMenu()) {
-        if (interaction.customId === 'select_sell_spawner') {
+        if (interaction.customId === 'select_sell_spawner' || interaction.customId === 'select_buy_spawner') {
             const [spawnerId] = interaction.values[0].split('_');
             const spawner = spawnerData.spawners.find(s => s.id === spawnerId);
 
@@ -163,9 +163,11 @@ client.on('interactionCreate', async (interaction) => {
                 return;
             }
 
+            const action = interaction.customId === 'select_sell_spawner' ? 'sell' : 'buy';
+
             const modal = new ModalBuilder()
-                .setCustomId(`trade_sell_${spawnerId}`)
-                .setTitle(`${spawner.emoji} ${spawner.name} verkaufen`);
+                .setCustomId(`trade_${action}_${spawnerId}`)
+                .setTitle(`${spawner.emoji} ${spawner.name} ${action === 'sell' ? 'verkaufen' : 'kaufen'}`);
 
             const mcNameInput = new TextInputBuilder()
                 .setCustomId('mc_username')
@@ -190,51 +192,12 @@ client.on('interactionCreate', async (interaction) => {
 
             await interaction.showModal(modal);
         }
-
-        if (interaction.customId === 'select_buy_spawner') {
-            const [spawnerId] = interaction.values[0].split('_');
-            const spawner = spawnerData.spawners.find(s => s.id === spawnerId);
-
-            if (!spawner) {
-                await interaction.reply({ content: '❌ Ungültiger Spawner.', ephemeral: true });
-                return;
-            }
-
-            const modal = new ModalBuilder()
-                .setCustomId(`trade_buy_${spawnerId}`)
-                .setTitle(`${spawner.emoji} ${spawner.name} kaufen`);
-
-            const mcNameInput = new TextInputBuilder()
-                .setCustomId('mc_username')
-                .setLabel('Dein Minecraft Username')
-                .setStyle(TextInputStyle.Short)
-                .setPlaceholder('z.B. Steve123')
-                .setRequired(true);
-
-            const amountInput = new TextInputBuilder()
-                .setCustomId('amount')
-                .setLabel('Anzahl Spawner')
-                .setStyle(TextInputStyle.Short)
-                .setPlaceholder('z.B. 3')
-                .setRequired(true)
-                .setMinLength(1)
-                .setMaxLength(3);
-
-            modal.addComponents(
-                new ActionRowBuilder().addComponents(mcNameInput),
-                new ActionRowBuilder().addComponents(amountInput)
-            );
-
-            await interaction.showModal(modal);
-        }
         return;
     }
 
     // --- MODAL SUBMIT ---
     if (interaction.isModalSubmit()) {
         const customId = interaction.customId;
-
-        // trade_sell_skeleton  →  ['trade', 'sell', 'skeleton']
         const [, action, spawnerId] = customId.split('_');
         const spawner = spawnerData.spawners.find(s => s.id === spawnerId);
 
@@ -251,7 +214,6 @@ client.on('interactionCreate', async (interaction) => {
             return;
         }
 
-        // Preis berechnen
         const pricePerUnit = action === 'sell' ? spawner.buyPrice : spawner.sellPrice;
         const totalPrice = pricePerUnit * amount;
 
@@ -267,8 +229,37 @@ client.on('interactionCreate', async (interaction) => {
             type: ChannelType.PrivateThread
         });
 
+        // Trader-Rolle zum Thread hinzufügen
+        const traderRole = interaction.guild.roles.cache.get(spawnerData.traderRoleId);
+        if (traderRole) {
+            await thread.permissionOverwrites.edit(traderRole, {
+                ViewChannel: true,
+                SendMessages: true,
+                ReadMessageHistory: true
+            });
+        }
+
+        // Alle anderen (außer @everyone) ausschließen
+        await thread.permissionOverwrites.edit(interaction.guild.roles.everyone, {
+            ViewChannel: false
+        });
+
         // User zum Thread hinzufügen
         await thread.members.add(interaction.user.id);
+
+        // Buttons für Claim + Close
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId('claim_ticket')
+                .setLabel('✅ Ticket Claimen')
+                .setStyle(ButtonStyle.Success)
+                .setEmoji('🔐'),
+            new ButtonBuilder()
+                .setCustomId('close_ticket')
+                .setLabel('❌ Ticket Schließen')
+                .setStyle(ButtonStyle.Danger)
+                .setEmoji('🔒')
+        );
 
         // Thread-Nachricht bauen
         const accentColor = action === 'sell' ? 0x00FF00 : 0x6d4aff;
@@ -292,7 +283,8 @@ client.on('interactionCreate', async (interaction) => {
             )
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(`<@${interaction.user.id}> hat dieses Ticket erstellt.`)
-            );
+            )
+            .addActionRowComponents(row);
 
         await thread.send({
             components: [threadContainer],
@@ -303,6 +295,108 @@ client.on('interactionCreate', async (interaction) => {
             content: `✅ Ticket erstellt! Ein Team-Mitglied kümmert sich gleich darum.`,
             ephemeral: true
         });
+
+        return;
+    }
+
+    // --- THREAD BUTTONS (Claim + Close) ---
+    if (interaction.isButton() && interaction.channel.type === ChannelType.PrivateThread) {
+        if (interaction.customId === 'claim_ticket') {
+            // Prüfen ob User Trader-Rolle hat
+            if (!interaction.member.roles.cache.has(spawnerData.traderRoleId)) {
+                await interaction.reply({
+                    content: '❌ Nur Mitglieder mit der Trader-Rolle dürfen Tickets clamen.',
+                    ephemeral: true
+                });
+                return;
+            }
+
+            // User zum Thread hinzufügen (falls noch nicht drin)
+            await interaction.channel.members.add(interaction.user.id);
+
+            const claimedContainer = new ContainerBuilder()
+                .setAccentColor(0x6d4aff)
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(
+                        `## 🔒 TICKET GECLAMED\n**Team-Mitglied:** <@${interaction.user.id}>\n\n*Dieses Ticket wird jetzt bearbeitet.*`
+                    )
+                );
+
+            await interaction.editReply({
+                components: [claimedContainer],
+                flags: MessageFlags.IsComponentsV2
+            });
+
+            await interaction.reply({
+                content: `✅ Ticket geclamed!`,
+                ephemeral: true
+            });
+        }
+
+        if (interaction.customId === 'close_ticket') {
+            // Nur Ersteller oder Trader dürfen schließen
+            const creatorId = interaction.channel.ownerId;
+            const isTrader = interaction.member.roles.cache.has(spawnerData.traderRoleId);
+
+            if (interaction.user.id !== creatorId && !isTrader) {
+                await interaction.reply({
+                    content: '❌ Nur der Ticket-Ersteller oder Trader dürfen Tickets schließen.',
+                    ephemeral: true
+                });
+                return;
+            }
+
+            const confirmContainer = new ContainerBuilder()
+                .setAccentColor(0xFF0000)
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(
+                        `## ⚠️ TICKET SCHLIEßEN?\nSoll das Ticket wirklich geschlossen werden?\n\n**Alle Nachrichten werden gelöscht.**`
+                    )
+                )
+                .addActionRowComponents(
+                    new ActionRowBuilder().addComponents(
+                        new ButtonBuilder()
+                            .setCustomId('confirm_close')
+                            .setLabel('Ja, schließen')
+                            .setStyle(ButtonStyle.Danger)
+                            .setEmoji('✅'),
+                        new ButtonBuilder()
+                            .setCustomId('cancel_close')
+                            .setLabel('Abbrechen')
+                            .setStyle(ButtonStyle.Secondary)
+                            .setEmoji('❌')
+                    )
+                );
+
+            await interaction.reply({
+                components: [confirmContainer],
+                flags: MessageFlags.IsComponentsV2,
+                ephemeral: true
+            });
+        }
+
+        return;
+    }
+
+    // --- CLOSE CONFIRM/CANCEL BUTTONS ---
+    if (interaction.isButton() && (interaction.customId === 'confirm_close' || interaction.customId === 'cancel_close')) {
+        if (interaction.customId === 'cancel_close') {
+            await interaction.reply({
+                content: '❌ Abgebrochen.',
+                ephemeral: true
+            });
+            return;
+        }
+
+        // Ticket löschen nach 5 Sekunden
+        await interaction.reply({
+            content: '✅ Ticket wird in 5 Sekunden geschlossen...',
+            ephemeral: true
+        });
+
+        setTimeout(async () => {
+            await interaction.channel.delete('Ticket abgeschlossen').catch(console.error);
+        }, 5000);
     }
 });
 

@@ -22,5 +22,7 @@
       "sellPrice": 7000000
     }
   ],
-  "currencySymbol": "M"
+  "currencySymbol": "M",
+  "traderRoleId": "123456789012345678",
+  "adminChannelId": "1537389571103522868"
 }
