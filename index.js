@@ -10,12 +10,14 @@ const {
     SeparatorBuilder,
     MessageFlags
 } = require('discord.js');
+const fs = require('fs');
 require('dotenv').config();
 
+const spawnerData = JSON.parse(fs.readFileSync('./config.json', 'utf8'));
+const { formatMoney } = require('./formatMoney.js');
+
 const client = new Client({
-    intents: [
-        GatewayIntentBits.Guilds
-    ]
+    intents: [GatewayIntentBits.Guilds]
 });
 
 client.once('ready', async () => {
@@ -24,6 +26,13 @@ client.once('ready', async () => {
     const channel = client.channels.cache.get('1537389571103522868');
 
     if (channel) {
+        // Tabelle bauen aus config.json
+        let priceTable = '```\nSPAWNER      🛒ANKAUF    💰VERKAUF\n────────────────────────────────────\n';
+        spawnerData.spawners.forEach(spawner => {
+            priceTable += `${spawner.emoji} ${spawner.name.padEnd(12)} ${formatMoney(spawner.buyPrice).padStart(10)}   ${formatMoney(spawner.sellPrice).padStart(10)}\n`;
+        });
+        priceTable += '```';
+
         const container = new ContainerBuilder()
             .setAccentColor(0x1a1a1a)
             .addTextDisplayComponents(
@@ -33,15 +42,7 @@ client.once('ready', async () => {
                 new SeparatorBuilder().setDivider(true).setSpacing(1)
             )
             .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(
-                    '```\n' +
-                    'SPAWNER      🛒ANKAUF    💰VERKAUF\n' +
-                    '────────────────────────────────────\n' +
-                    '💀 Skeleton      10.0M        8.0M\n' +
-                    '💥 Creeper       10.0M        9.0M\n' +
-                    '🤖 Iron Golem    10.0M        67.0M\n' +
-                    '```'
-                )
+                new TextDisplayBuilder().setContent(priceTable)
             )
             .addSeparatorComponents(
                 new SeparatorBuilder().setDivider(true).setSpacing(1)
@@ -57,11 +58,11 @@ client.once('ready', async () => {
             )
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent('Klicke unten auf den `💰 VERKAUFEN` oder `🛒 ANKAUF` Button,\num einen Trade zu Starten.')
-            ); // <-- Klammer hier geschlossen!
+            );
 
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
-                .setCustomId('spawner_ankaufen') // ⚠️ HIER KORRIGIERT!
+                .setCustomId('spawner_ankaufen')
                 .setLabel('Spawner Kaufen')
                 .setStyle(ButtonStyle.Primary)
                 .setEmoji('🛒'),
@@ -85,10 +86,16 @@ client.on('interactionCreate', async (interaction) => {
 
     if (interaction.isButton()) {
         if (interaction.customId === 'spawner_verkaufen') {
+            const options = spawnerData.spawners.map(spawner => ({
+                label: `${spawner.emoji} ${spawner.name}`,
+                description: `Du erhältst ${formatMoney(spawner.buyPrice)}`,
+                value: `${spawner.id}_sell`
+            }));
+
             const container = new ContainerBuilder()
-                
+                .setAccentColor(0x00FF00)
                 .addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent('## 💰 Spawner Verkaufen\nWelche Spawner möchtest du Verkaufen')
+                    new TextDisplayBuilder().setContent('## 🛒 VERKAUFEN\n*Wähle deinen Spawner*')
                 )
                 .addSeparatorComponents(
                     new SeparatorBuilder().setDivider(true).setSpacing(1)
@@ -98,11 +105,7 @@ client.on('interactionCreate', async (interaction) => {
                         new StringSelectMenuBuilder()
                             .setCustomId('select_sell_spawner')
                             .setPlaceholder('Welchen Spawner verkaufst du?')
-                            .addOptions([
-                                { label: '💀 Skeleton', description: 'Du erhältst 10.0M', value: 'skeleton_sell' },
-                                { label: '💥 Creeper', description: 'Du erhältst 10.0M', value: 'creeper_sell' },
-                                { label: '🤖 Iron Golem', description: 'Du erhältst 10.0M', value: 'iron_golem_sell' }
-                            ]),
+                            .addOptions(options)
                     )
                 );
 
@@ -114,10 +117,16 @@ client.on('interactionCreate', async (interaction) => {
         }
 
         if (interaction.customId === 'spawner_ankaufen') {
+            const options = spawnerData.spawners.map(spawner => ({
+                label: `${spawner.emoji} ${spawner.name}`,
+                description: `Du bezahlst ${formatMoney(spawner.sellPrice)}`,
+                value: `${spawner.id}_buy`
+            }));
+
             const container = new ContainerBuilder()
-                
+                .setAccentColor(0x6d4aff)
                 .addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent('## 🛒 Spawner Ankaufen\nWelchen Spawner möchtest du Kaufen?')
+                    new TextDisplayBuilder().setContent('## 💰 ANKAUFEN\n*Wähle deinen Spawner*')
                 )
                 .addSeparatorComponents(
                     new SeparatorBuilder().setDivider(true).setSpacing(1)
@@ -126,12 +135,8 @@ client.on('interactionCreate', async (interaction) => {
                     new ActionRowBuilder().addComponents(
                         new StringSelectMenuBuilder()
                             .setCustomId('select_buy_spawner')
-                            .setPlaceholder('Welchen Spawner möchtest du kaufen?')
-                            .addOptions([
-                                { label: '💀 Skeleton', description: 'Du bezahlst 8.0M', value: 'skeleton_buy' },
-                                { label: '💥 Creeper', description: 'Du bezahlst 9.0M', value: 'creeper_buy' },
-                                { label: '🤖 Iron Golem', description: 'Du bezahlst 7.0M', value: 'iron_golem_buy' }
-                            ]),
+                            .setPlaceholder('Welchen Spawner kaufst du?')
+                            .addOptions(options)
                     )
                 );
 
@@ -144,16 +149,17 @@ client.on('interactionCreate', async (interaction) => {
         return;
     }
 
-    // Select Menu Handler bleibt gleich
     if (interaction.isStringSelectMenu()) {
         if (interaction.customId === 'select_sell_spawner') {
             const [spawnerId] = interaction.values[0].split('_');
-            const name = spawnerId.charAt(0).toUpperCase() + spawnerId.slice(1);
+            const spawner = spawnerData.spawners.find(s => s.id === spawnerId);
+            const name = spawner ? spawner.name : spawnerId.charAt(0).toUpperCase() + spawnerId.slice(1);
+            const price = formatMoney(spawner?.buyPrice || 0);
 
             const successContainer = new ContainerBuilder()
                 .setAccentColor(0x00FF00)
                 .addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent(`## ✅ VERKAUF BESTÄTIGT\nDu hast **${name}** erfolgreich verkauft.`)
+                    new TextDisplayBuilder().setContent(`## ✅ VERKAUF BESTÄTIGT\nDu hast **${name}** für ${price} verkauft.`)
                 )
                 .addSeparatorComponents(
                     new SeparatorBuilder().setDivider(true).setSpacing(1)
@@ -171,12 +177,14 @@ client.on('interactionCreate', async (interaction) => {
 
         if (interaction.customId === 'select_buy_spawner') {
             const [spawnerId] = interaction.values[0].split('_');
-            const name = spawnerId.charAt(0).toUpperCase() + spawnerId.slice(1);
+            const spawner = spawnerData.spawners.find(s => s.id === spawnerId);
+            const name = spawner ? spawner.name : spawnerId.charAt(0).toUpperCase() + spawnerId.slice(1);
+            const price = formatMoney(spawner?.sellPrice || 0);
 
             const successContainer = new ContainerBuilder()
                 .setAccentColor(0xFF0000)
                 .addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent(`## ✅ KAUF BESTÄTIGT\nDu hast **${name}** erfolgreich gekauft.`)
+                    new TextDisplayBuilder().setContent(`## ✅ KAUF BESTÄTIGT\nDu hast **${name}** für ${price} gekauft.`)
                 )
                 .addSeparatorComponents(
                     new SeparatorBuilder().setDivider(true).setSpacing(1)

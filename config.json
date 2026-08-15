@@ -1,0 +1,26 @@
+{
+  "spawners": [
+    {
+      "id": "skeleton",
+      "name": "Skeleton",
+      "emoji": "💀",
+      "buyPrice": 10000000,
+      "sellPrice": 8000000
+    },
+    {
+      "id": "creeper",
+      "name": "Creeper",
+      "emoji": "💥",
+      "buyPrice": 10000000,
+      "sellPrice": 9000000
+    },
+    {
+      "id": "iron_golem",
+      "name": "Iron Golem",
+      "emoji": "🤖",
+      "buyPrice": 10000000,
+      "sellPrice": 7000000
+    }
+  ],
+  "currencySymbol": "M"
+}
