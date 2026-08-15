@@ -356,20 +356,12 @@ client.on('interactionCreate', async (interaction) => {
             type: ChannelType.PrivateThread
         });
 
-        const traderRole = interaction.guild.roles.cache.get(spawnerData.traderRoleId);
-        if (traderRole) {
-            await thread.permissionOverwrites.edit(traderRole, {
-                ViewChannel: true,
-                SendMessages: true,
-                ReadMessageHistory: true
-            });
-        }
-
-        await thread.permissionOverwrites.edit(interaction.guild.roles.everyone, {
-            ViewChannel: false
-        });
-
         await thread.members.add(interaction.user.id);
+
+        const traderMembers = interaction.guild.members.cache.filter(m => m.roles.cache.has(spawnerData.traderRoleId));
+        for (const [memberId] of traderMembers) {
+            await thread.members.add(memberId).catch(() => {});
+        }
 
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
