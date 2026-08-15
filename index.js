@@ -299,42 +299,41 @@ client.on('interactionCreate', async (interaction) => {
         return;
     }
 
-    // --- THREAD BUTTONS (Claim + Close) ---
+        // --- THREAD BUTTONS (Claim + Close) ---
     if (interaction.isButton() && interaction.channel.type === ChannelType.PrivateThread) {
+
         if (interaction.customId === 'claim_ticket') {
-            // Prüfen ob User Trader-Rolle hat
             if (!interaction.member.roles.cache.has(spawnerData.traderRoleId)) {
                 await interaction.reply({
-                    content: '❌ Nur Mitglieder mit der Trader-Rolle dürfen Tickets clamen.',
+                    content: '❌ Nur Trader dürfen Tickets claimen.',
                     ephemeral: true
                 });
                 return;
             }
 
-            // User zum Thread hinzufügen (falls noch nicht drin)
             await interaction.channel.members.add(interaction.user.id);
 
             const claimedContainer = new ContainerBuilder()
                 .setAccentColor(0x6d4aff)
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(
-                        `## 🔒 TICKET GECLAMED\n**Team-Mitglied:** <@${interaction.user.id}>\n\n*Dieses Ticket wird jetzt bearbeitet.*`
+                        `## 🔒 TICKET GECLAIMED\n**Team-Mitglied:** <@${interaction.user.id}>\n\n*Dieses Ticket wird jetzt bearbeitet.*`
                     )
                 );
 
-            await interaction.editReply({
+            await interaction.message.edit({
                 components: [claimedContainer],
                 flags: MessageFlags.IsComponentsV2
             });
 
             await interaction.reply({
-                content: `✅ Ticket geclamed!`,
+                content: '✅ Ticket geclaimed!',
                 ephemeral: true
             });
+            return;
         }
 
         if (interaction.customId === 'close_ticket') {
-            // Nur Ersteller oder Trader dürfen schließen
             const creatorId = interaction.channel.ownerId;
             const isTrader = interaction.member.roles.cache.has(spawnerData.traderRoleId);
 
@@ -350,7 +349,7 @@ client.on('interactionCreate', async (interaction) => {
                 .setAccentColor(0xFF0000)
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(
-                        `## ⚠️ TICKET SCHLIEßEN?\nSoll das Ticket wirklich geschlossen werden?\n\n**Alle Nachrichten werden gelöscht.**`
+                        '## ⚠️ TICKET SCHLIESSEN?\nSoll das Ticket wirklich geschlossen werden?\n\n**Das Ticket wird nach dem Schließen gelöscht.**'
                     )
                 )
                 .addActionRowComponents(
@@ -370,28 +369,25 @@ client.on('interactionCreate', async (interaction) => {
 
             await interaction.reply({
                 components: [confirmContainer],
-                flags: MessageFlags.IsComponentsV2,
-                ephemeral: true
+                flags: MessageFlags.IsComponentsV2
             });
+            return;
         }
-
-        return;
     }
 
-    // --- CLOSE CONFIRM/CANCEL BUTTONS ---
+    // --- CLOSE CONFIRM/CANCEL ---
     if (interaction.isButton() && (interaction.customId === 'confirm_close' || interaction.customId === 'cancel_close')) {
         if (interaction.customId === 'cancel_close') {
-            await interaction.reply({
+            await interaction.update({
                 content: '❌ Abgebrochen.',
-                ephemeral: true
+                components: []
             });
             return;
         }
 
-        // Ticket löschen nach 5 Sekunden
-        await interaction.reply({
+        await interaction.update({
             content: '✅ Ticket wird in 5 Sekunden geschlossen...',
-            ephemeral: true
+            components: []
         });
 
         setTimeout(async () => {
@@ -401,3 +397,5 @@ client.on('interactionCreate', async (interaction) => {
 });
 
 client.login(process.env.DISCORD_TOKEN);
+
+
