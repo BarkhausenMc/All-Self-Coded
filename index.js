@@ -21,15 +21,24 @@ client.once('ready', async () => {
     const channel = client.channels.cache.get('1537389571103522868');
 
     if (channel) {
-        const embed = new EmbedBuilder()
-            .setColor(0x6d4aff)
-            .setTitle('# 💀 Spawner Tarding 💀')
-            .setDescription('*Yayks Spawner Trading - HugoSMP*')
-            .addFields(
-                { name: '**💰 ANKAUF **', value: 'Wir kaufen deinen Spawner' },
-                {name: '**🛒 VERKAUF**', value: ' Wir verkaufen dir einen Spawner'},
-                {name:'', value:'```Spawner    Ankauf      Verkauf```'}
-            );
+const embed = new EmbedBuilder()
+  .setColor(0x1a1a1a)
+  .setTitle('💎 SPAWNER PREISE 💎')
+  .setDescription(
+    '**VOID Market — HUGOSMP**\n\n' +
+    '💰 **ANKAUF** — Wir kaufen deinen Spawner — so viel bekommst du\n' +
+    '🛒 **VERKAUF** — Wir verkaufen dir einen Spawner — so viel zahlst du\n\n' +
+    '```\n' +
+    'SPAWNER        ANKAUF      VERKAUF\n' +
+    '────────────────────────────────────\n' +
+    '👾 Creeper      6.0M        9.0M\n' +
+    '🤖 Iron Golem   5.0M        STOP\n' +
+    '💀 Skelly       9.5M        STOP\n' +
+    '```'
+  )
+  .setFooter({
+    text: 'Wir versuchen immer faire und optimale Preise anzubieten. ❤️  •  Wähle eine Option, um direkt zu handeln 👇'
+  });
 
         const button = new ButtonBuilder()
             .setCustomId('anleitung')
