@@ -229,12 +229,16 @@ const spawnerEmoji = spawnerEmojis[spawnerType] || '❌';
                 )
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(
-                        `**Spawner:**${spawnerEmoji} ${spawnerType}\n` +
-                        `**📦 Menge:** ${amount}\n\n` +
+                        `**${spawnerEmoji} Spawner:**${spawnerType}\n\n` +
+                        `**📦 Menge:** ${amount}\n` +
                         `**💵 Preis/Stk:** ${pricePerUnit.toFixed(1)}M\n` +
                         `**💰 Gesamtpreis:** ${totalPrice.toFixed(1)}M`                        
                     )
+                )
+                .addSeparatorComponents(
+                new SeparatorBuilder().setDivider(true).setSpacing(1)
                 );
+
             await thread.send({
                 components: [container],
                 flags: MessageFlags.IsComponentsV2
