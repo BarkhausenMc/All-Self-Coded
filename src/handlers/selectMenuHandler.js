@@ -44,7 +44,7 @@ module.exports = async function handleSelectMenu(interaction) {
 
         const modal = new ModalBuilder()
             .setCustomId(`trade_modal:${tradeType}:${spawnerType}`)
-            .setTitle(`${emoji} ${spawnerType} ${actionWord}`);
+            .setTitle(`${spawnerType} ${actionWord}`);
 
         const ingameNameInput = new TextInputBuilder()
             .setCustomId('ingame_name')
