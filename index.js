@@ -166,7 +166,54 @@ client.on('interactionCreate', async (interaction) => {
             });
             return;
         }
+if (interaction.customId === 'close') {
+    const trade = trades[interaction.channelId];
 
+    // Prüfen ob Thread geclaimt ist
+    if (!trade || !trade.claimedBy) {
+        await interaction.reply({
+            content: '❌ Der Trade muss erst geclaimt werden, bevor du ihn schließen kannst.',
+            flags: MessageFlags.Ephemeral
+        });
+        return;
+    }
+
+    // Prüfen ob nur der Claimer schließen darf
+    if (interaction.user.id !== trade.claimedBy) {
+        await interaction.reply({
+            content: `❌ Nur <@${trade.claimedBy}> darf diesen Trade schließen.`,
+            flags: MessageFlags.Ephemeral
+        });
+        return;
+    }
+
+    // Thread schließen
+    await interaction.channel.parentId
+        ? await interaction.channel.setArchived(true)
+        : await interaction.channel.delete();
+
+    // Trade aus trades entfernen
+    delete trades[interaction.channelId];
+
+    // Nachricht an alle im Channel (falls Thread nicht gelöscht wird)
+    const msg = await interaction.channel.messages.fetch(trade.messageId);
+    const closeContainer = new ContainerBuilder()
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+                `✅ **Trade abgeschlossen!**\n\nDieser Thread wurde geschlossen.`
+            )
+        );
+
+    await msg.edit({
+        components: [closeContainer],
+        flags: MessageFlags.IsComponentsV2
+    });
+
+    await interaction.reply({
+        content: `✅ Thread wurde geschlossen.`,
+        flags: MessageFlags.Ephemeral
+    });
+}
         // Spawner Trading Buttons
         switch (interaction.customId) {
             case 'spawner_ankaufen': {
@@ -296,18 +343,23 @@ client.on('interactionCreate', async (interaction) => {
 
             const container = buildTradeContainer(tradeData);
 
-            const claimRow = new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setCustomId('claim')
-                    .setLabel('Claim')
-                    .setStyle(ButtonStyle.Primary)
-                    .setEmoji('🙋‍♂️')
-            );
+const actionRow = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+        .setCustomId('claim')
+        .setLabel('Claim')
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji('🙋‍♂️'),
+    new ButtonBuilder()
+        .setCustomId('close')
+        .setLabel('Schließen')
+        .setStyle(ButtonStyle.Danger)
+        .setEmoji('❌')
+);
 
             
 
 const tradeMsg = await thread.send({
-    components: [container, claimRow],  
+    components: [container, actionRow],
     flags: MessageFlags.IsComponentsV2
 });
 
