@@ -200,7 +200,12 @@ client.on('interactionCreate', async (interaction) => {
                 Skeleton: { ankauf: 10.0, verkauf: 8.0 },
                 Creeper:  { ankauf: 10.0, verkauf: 9.0 }
             };
+            const spawnerEmojis = {
+              skeleton: '💀',
+              creeper: '💥'
+            };
 
+const spawnerEmoji = spawnerEmojis[spawnerType] || '📦';
             const pricePerUnit = prices[spawnerType][tradeType];
             const totalPrice = pricePerUnit * parseInt(amount);
 
@@ -216,8 +221,8 @@ client.on('interactionCreate', async (interaction) => {
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(
                         `**👤Kunde:** <@${interaction.user.id}>\n` +
-                        `**👤ING:** \`${ingameName}\`\n\n` +
-                        `**${emoji}Spawner-Typ:** ${spawnerType}\n` +
+                        `**🎮ING:** \`${ingameName}\`\n\n` +
+                        `**${spawnerEmoji}Spawner-Typ:** ${spawnerType}\n` +
                         `**📦 Menge:** ${amount}\n\n` +
                         `**💵 Preis/Stk:** ${pricePerUnit.toFixed(1)}M\n` +
                         `**💰 Gesamtpreis:** ${totalPrice.toFixed(1)}M`
