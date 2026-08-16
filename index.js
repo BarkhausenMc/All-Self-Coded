@@ -80,19 +80,19 @@ client.once('ready', async () => {
     }
 });
 
-client.on('interactionCreat', async (interaction) => {
+client.on('interactionCreate', async (interaction) => {
     if (!interaction.isButton()) return;
 
-    switch (interaction.setCustomId) {
+    switch (interaction.customId) {
         case 'spawner_ankaufen':
-            await interaction.deferReply({ ephemeral: true});
-            
+            await interaction.deferReply({ ephemeral: true });
+
             const selectMenu = new StringSelectMenuBuilder()
-                .setCustomId('spawner_ankauf_select')
+                .setCustomId('spawner_ankeuf_select')
                 .setLabel('Wähle einen Spawner')
-                .setPlaceholder('Spawner wählen...')
+                .setPlaceholder('Spawner auswählen...')
                 .addOptions([
-                        {
+                    {
                         label: '💀 Skeleton Spawner',
                         description: 'Ankaufpreis: 10.0M | Verkaufspreis: 8.0M',
                         value: 'skeleton_spawner',
@@ -103,16 +103,24 @@ client.on('interactionCreat', async (interaction) => {
                         description: 'Ankaufpreis: 10.0M | Verkaufspreis: 9.0M',
                         value: 'creeper_spawner',
                         emoji: '💥'
+                    },
+                    {
+                        label: '🕸️ Spider Spawner',
+                        description: 'Ankaufpreis: 10.0M | Verkaufspreis: 8.5M',
+                        value: 'spider_spawner',
+                        emoji: '🕸️'
                     }
                 ]);
+
             const row = new ActionRowBuilder().addComponents(selectMenu);
 
             await interaction.editReply({
                 content: '**🛒 Ankauf - Bitte wähle deinen Spawner:**',
-                components: [row] 
+                components: [row]
             });
             break;
-                case 'spawner_verkaufen':
+
+        case 'spawner_verkaufen':
             await interaction.deferReply({ ephemeral: true });
 
             const selectMenuSell = new StringSelectMenuBuilder()
@@ -147,9 +155,10 @@ client.on('interactionCreat', async (interaction) => {
                 components: [sellRow]
             });
             break;
-    
     }
-        if (interaction.isStringSelectMenu()) {
+
+    // 👇 NEU: Select Menu Auswahl verarbeiten
+    if (interaction.isStringSelectMenu()) {
         if (interaction.customId === 'spawner_ankeuf_select') {
             const selectedSpawner = interaction.values[0];
             
