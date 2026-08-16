@@ -187,8 +187,7 @@ async function handleVouchModal(interaction) {
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
                     `**${trade.emoji} Geschäft:** ${trade.action} ||(aus sicht des Kunden)||\n` +
-                    `**📦 Menge:** ${trade.amount}\n` +
-                    `**${trade.spawnerEmoji} Spawner:** ${trade.spawnerType}\n` +
+                    `**${trade.spawnerEmoji} Spawner:** ${trade.spawnerType} x ${trade.amount}\n` +
                     `**💰 Gesamtpreis:** ${trade.totalPrice.toFixed(1)}M\n\n` 
                 )
             )
