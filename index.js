@@ -86,164 +86,166 @@ client.once('ready', async () => {
 
 client.on('interactionCreate', async (interaction) => {
 
+    // --- BUTTON HANDLER ---
     if (interaction.isButton()) {
         switch (interaction.customId) {
             case 'spawner_ankaufen': {
                 await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-                const selectMenu = new StringSelectMenuBuilder()
-                    .setCustomId('spawner_ankauf_select')
-                    .setPlaceholder('Spawner auswählen...')
-                    .addOptions([
-                        {
-                            label: '💀 Skeleton Spawner',
-                            description: 'Preis: 10.0M',
-                            value: 'skeleton_spawner',
-                            emoji: '💀'
-                        },
-                        {
-                            label: '💥 Creeper Spawner',
-                            description: 'Preis: 10.0M',
-                            value: 'creeper_spawner',
-                            emoji: '💥'
-                        }
-                    ]);
+                const modal = new ModalBuilder()
+                    .setCustomId('trade_modal:ankauf')  // 'ankauf' in der ID speichern
+                    .setTitle('🛒 Spawner Ankauf');
 
-                const row = new ActionRowBuilder().addComponents(selectMenu);
+                const ingameNameInput = new TextInputBuilder()
+                    .setCustomId('ingame_name')
+                    .setLabel('Wie lautet dein Ingame-Name?')
+                    .setStyle(TextInputStyle.Short)
+                    .setPlaceholder('z.B. Steve')
+                    .setRequired(true);
 
-                const container = new ContainerBuilder()
-                    .addTextDisplayComponents(
-                        new TextDisplayBuilder().setContent('## 🛒 • Spawner Ankauf\nWähle unten den Spawner, den du **kaufen** möchtest.')
-                    )
-                    .addActionRowComponents(row);
+                const amountInput = new TextInputBuilder()
+                    .setCustomId('amount')
+                    .setLabel('Wie viele Spawner möchtest du kaufen?')  // 'kaufen' statt 'verkaufen'
+                    .setStyle(TextInputStyle.Short)
+                    .setPlaceholder('z.B. 3')
+                    .setRequired(true);
 
-                await interaction.editReply({
-                    components: [container],
-                    flags: MessageFlags.IsComponentsV2
-                });
+                const firstRow = new ActionRowBuilder().addComponents(ingameNameInput);
+                const secondRow = new ActionRowBuilder().addComponents(amountInput);
+
+                modal.addComponents(firstRow, secondRow);
+
+                await interaction.showModal(modal);
                 break;
             }
 
             case 'spawner_verkaufen': {
                 await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-                const selectMenu = new StringSelectMenuBuilder()
-                    .setCustomId('spawner_verkauf_select')
-                    .setPlaceholder('Spawner auswählen...')
-                    .addOptions([
-                        {
-                            label: '💀 Skeleton Spawner',
-                            description: 'Du bekommst: 8.0M',
-                            value: 'sell_skeleton',
-                            emoji: '💀'
-                        },
-                        {
-                            label: '💥 Creeper Spawner',
-                            description: 'Du bekommst: 9.0M',
-                            value: 'sell_creeper',
-                            emoji: '💥'
-                        }
-                    ]);
+                const modal = new ModalBuilder()
+                    .setCustomId('trade_modal:verkauf')  // 'verkauf' in der ID speichern
+                    .setTitle('💰 Spawner Verkauf');
 
-                const row = new ActionRowBuilder().addComponents(selectMenu);
+                const ingameNameInput = new TextInputBuilder()
+                    .setCustomId('ingame_name')
+                    .setLabel('Wie lautet dein Ingame-Name?')
+                    .setStyle(TextInputStyle.Short)
+                    .setPlaceholder('z.B. Steve')
+                    .setRequired(true);
 
-                const container = new ContainerBuilder()
-                    .addTextDisplayComponents(
-                        new TextDisplayBuilder().setContent('## 💰 • Spawner Verkauf\nWähle unten den Spawner, den du **verkaufen** möchtest.')
-                    )
-                    .addActionRowComponents(row);
+                const amountInput = new TextInputBuilder()
+                    .setCustomId('amount')
+                    .setLabel('Wie viele Spawner möchtest du verkaufen?')  // 'verkaufen'
+                    .setStyle(TextInputStyle.Short)
+                    .setPlaceholder('z.B. 3')
+                    .setRequired(true);
 
-                await interaction.editReply({
-                    components: [container],
-                    flags: MessageFlags.IsComponentsV2
-                });
+                const firstRow = new ActionRowBuilder().addComponents(ingameNameInput);
+                const secondRow = new ActionRowBuilder().addComponents(amountInput);
+
+                modal.addComponents(firstRow, secondRow);
+
+                await interaction.showModal(modal);
                 break;
             }
         }
     }
 
-if (interaction.isStringSelectMenu()) {
-    const selected = interaction.values[0];
+    // --- MODAL SUBMIT HANDLER ---
+    if (interaction.isModalSubmit()) {
+        if (interaction.customId.startsWith('trade_modal:')) {
+            const tradeType = interaction.customId.split(':')[1];  // 'ankauf' oder 'verkauf'
+            const ingameName = interaction.fields.getTextInputValue('ingame_name');
+            const amount = interaction.fields.getTextInputValue('amount');
 
-    // Modal bauen — customId enthält die Spawner-Auswahl, damit wir sie später auslesen können
-    const modal = new ModalBuilder()
-        .setCustomId(`spawner_trade_modal:${selected}`)
-        .setTitle('🛒 Spawner Trade Details');
+            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-    const ingameNameInput = new TextInputBuilder()
-        .setCustomId('ingame_name')
-        .setLabel('Wie lautet dein Ingame-Name?')
-        .setStyle(TextInputStyle.Short)
-        .setPlaceholder('z.B. Steve')
-        .setRequired(true);
+            const selectMenu = new StringSelectMenuBuilder()
+                .setCustomId(`select_after_modal:${tradeType}`)
+                .setPlaceholder('Spawner auswählen...')
+                .addOptions([
+                    {
+                        label: '💀 Skeleton Spawner',
+                        description: tradeType === 'ankauf' ? 'Preis: 10.0M' : 'Du bekommst: 8.0M',
+                        value: 'skeleton_spawner',
+                        emoji: '💀'
+                    },
+                    {
+                        label: '💥 Creeper Spawner',
+                        description: tradeType === 'ankauf' ? 'Preis: 10.0M' : 'Du bekommst: 9.0M',
+                        value: 'creeper_spawner',
+                        emoji: '💥'
+                    }
+                ]);
 
-    const amountInput = new TextInputBuilder()
-        .setCustomId('amount')
-        .setLabel('Wie viele Spawner möchtest du trade-en?')
-        .setStyle(TextInputStyle.Short)
-        .setPlaceholder('z.B. 3')
-        .setRequired(true);
+            const row = new ActionRowBuilder().addComponents(selectMenu);
 
-    const firstRow = new ActionRowBuilder().addComponents(ingameNameInput);
-    const secondRow = new ActionRowBuilder().addComponents(amountInput);
-
-    modal.addComponents(firstRow, secondRow);
-
-    await interaction.showModal(modal);
-}
-if (interaction.isModalSubmit()) {
-    if (interaction.customId.startsWith('spawner_trade_modal:')) {
-        const selected = interaction.customId.split(':')[1];
-        const ingameName = interaction.fields.getTextInputValue('ingame_name');
-        const amount = interaction.fields.getTextInputValue('amount');
-
-        // Thread-Namen basierend auf Ankauf/Verkauf
-        const isVerkauf = selected.startsWith('sell_');
-        const spawnerName = isVerkauf ? selected.replace('sell_', '') : selected;
-        const emoji = isVerkauf ? '💰' : '🛒';
-        const action = isVerkauf ? 'Verkauf' : 'Ankauf';
-
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
-        const thread = await interaction.channel.threads.create({
-            name: `${emoji} ${action} - ${interaction.user.username}`,
-            type: ChannelType.PrivateThread,
-            invitable: false
-        });
-
-        await thread.members.add(interaction.user.id);
-
-        const container = new ContainerBuilder()
-            .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(
-                    `## ${emoji} • Spawner ${action}\n\n` +
-                    `**Spieler:** <@${interaction.user.id}>\n` +
-                    `**Ingame-Name:** \`${ingameName}\`\n` +
-                    `**Spawner-Typ:** ${spawnerName}\n` +
-                    `**Menge:** ${amount}\n\n` +
-                    `Ein Staff-Mitglied wird sich gleich um deinen Trade kümmern.\n` +
-                    `Bitte habe etwas Geduld! 🕐`
-                )
-            );
-
-        await thread.send({
-            components: [container],
-            flags: MessageFlags.IsComponentsV2
-        });
-
-        await interaction.editReply({
-            components: [
-                new ContainerBuilder()
-                    .addTextDisplayComponents(
-                        new TextDisplayBuilder().setContent(
-                            `✅ Dein Trade-Thread wurde erstellt: <#${thread.id}>`
-                        )
+            const container = new ContainerBuilder()
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(
+                        `## ${tradeType === 'ankauf' ? '🛒' : '💰'} • Trade Details\n\n` +
+                        `**Ingame-Name:** \`${ingameName}\`\n` +
+                        `**Menge:** ${amount}\n\n` +
+                        `Wähle unten den Spawner-Typ aus:`
                     )
-            ],
-            flags: MessageFlags.IsComponentsV2
-        });
+                )
+                .addActionRowComponents(row);
+
+            await interaction.editReply({
+                components: [container],
+                flags: MessageFlags.IsComponentsV2
+            });
+        }
     }
-}
+
+    // --- SELECT MENU HANDLER ---
+    if (interaction.isStringSelectMenu()) {
+        if (interaction.customId.startsWith('select_after_modal:')) {
+            const tradeType = interaction.customId.split(':')[1];
+            const selected = interaction.values[0];
+
+            const emoji = tradeType === 'ankauf' ? '🛒' : '💰';
+            const action = tradeType === 'ankauf' ? 'Ankauf' : 'Verkauf';
+
+            const thread = await interaction.channel.threads.create({
+                name: `${emoji} ${action} - ${interaction.user.username}`,
+                type: ChannelType.PrivateThread,
+                invitable: false
+            });
+
+            await thread.members.add(interaction.user.id);
+
+            const container = new ContainerBuilder()
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(
+                        `## ${emoji} • Spawner ${action}\n\n` +
+                        `**Spieler:** <@${interaction.user.id}>\n` +
+                        `**Ingame-Name:** \`${ingameName}\`\n` +
+                        `**Spawner-Typ:** ${selected}\n` +
+                        `**Menge:** ${amount}\n\n` +
+                        `Ein Staff-Mitglied wird sich gleich um deinen Trade kümmern.\n` +
+                        `Bitte habe etwas Geduld! 🕐`
+                    )
+                );
+
+            await thread.send({
+                components: [container],
+                flags: MessageFlags.IsComponentsV2
+            });
+
+            await interaction.update({
+                components: [
+                    new ContainerBuilder()
+                        .addTextDisplayComponents(
+                            new TextDisplayBuilder().setContent(
+                                `✅ Dein Trade-Thread wurde erstellt: <#${thread.id}>`
+                            )
+                        )
+                ],
+                flags: MessageFlags.IsComponentsV2
+            });
+        }
+    }
 });
 
 client.login(process.env.DISCORD_TOKEN);
