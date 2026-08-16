@@ -51,9 +51,9 @@ client.once('ready', async () => {
             Routes.applicationCommands(client.user.id),
             { body: commands }
         );
-        console.log('Slash Commands registriert!');
+        console.log('✅ Slash Commands registriert!');
     } catch (error) {
-        console.error('Fehler beim Registrieren der Commands:', error);
+        console.error('❌ Fehler beim Registrieren der Commands:', error);
     }
 });
 
@@ -66,7 +66,6 @@ client.on('interactionCreate', async (interaction) => {
         if (interaction.isChatInputCommand()) {
             if (interaction.commandName === 'setup') {
                 if (interaction.options.getSubcommand() === 'spawner') {
-                    // Permission Check: Admin only
                     if (!interaction.memberPermissions.has('Administrator')) {
                         await interaction.reply({ content: '❌ Nur Administratoren können das Setup ausführen.', flags: MessageFlags.Ephemeral });
                         return;
