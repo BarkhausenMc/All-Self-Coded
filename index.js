@@ -89,38 +89,43 @@ client.on('interactionCreate', async (interaction) => {
 
                     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-                    const priceLines = Object.entries(constants.prices).map(([name, prices]) => {
-                        const ankauf = prices.ankauf === 'Stop' ? 'STOP' : `${prices.ankauf.toFixed(1)}M`;
-                        const verkauf = prices.verkauf === 'Stop' ? 'STOP' : `${prices.verkauf.toFixed(1)}M`;
-                        const emoji = constants.spawnerEmojis[name] || '❌';
-                        return `${emoji} ${name.padEnd(12)} ${ankauf.padStart(10)}  ${verkauf.padStart(10)}`;
-                    }).join('\n');
+// Im /setup spawner Command:
+const priceLines = Object.entries(constants.prices).map(([name, prices]) => {
+    const ankaufStopped = prices.ankauf === 'Stop' || prices.ankauf === undefined;
+    const verkaufStopped = prices.verkauf === 'Stop' || prices.verkauf === undefined;
+    
+    const ankauf = ankaufStopped ? 'GESPERRT' : `${prices.ankauf.toFixed(1)}M`;
+    const verkauf = verkaufStopped ? 'GESPERRT' : `${prices.verkauf.toFixed(1)}M`;
+    const emoji = constants.spawnerEmojis[name] || '📦';
+    
+    return `${emoji} ${name.padEnd(12)} ${ankauf.padStart(10)}  ${verkauf.padStart(10)}`;
+}).join('\n');
 
-                    const container = new ContainerBuilder()
-                        .addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent('## 🛒 • SPAWNER TRADING • 💰\n*Yayks Spawner Trading*')
-                        )
-                        .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
-                        .addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent(
-                                '```\n' +
-                                'SPAWNER      🛒ANKAUF    💰VERKAUF\n' +
-                                '────────────────────────────────────\n' +
-                                priceLines + '\n' +
-                                '```'
-                            )
-                        )
-                        .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
-                        .addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent('💰 **VERKAUFEN** — Du **verkaufst** uns deine Spawner')
-                        )
-                        .addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent('🛒 **ANKAUF** — Du **kaufst** unsere Spawner')
-                        )
-                        .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
-                        .addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent('Klicke unten auf den `💰 VERKAUFEN` oder `🛒 ANKAUF` Button,\num einen Trade zu Starten.')
-                        );
+const container = new ContainerBuilder()
+    .addTextDisplayComponents(
+        new TextDisplayBuilder().setContent('## 🛒 • SPAWNER TRADING • 💰\n*Yayks Spawner Trading*')
+    )
+    .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
+    .addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(
+            '```\n' +
+            'SPAWNER      🛒ANKAUF    💰VERKAUF\n' +
+            '────────────────────────────────────\n' +
+            priceLines + '\n' +
+            '```'
+        )
+    )
+    .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
+    .addTextDisplayComponents(
+        new TextDisplayBuilder().setContent('💰 **VERKAUFEN** — Du **verkaufst** uns deine Spawner')
+    )
+    .addTextDisplayComponents(
+        new TextDisplayBuilder().setContent('🛒 **ANKAUF** — Du **kaufst** unsere Spawner')
+    )
+    .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
+    .addTextDisplayComponents(
+        new TextDisplayBuilder().setContent('Klicke unten auf den `💰 VERKAUFEN` oder `🛒 ANKAUF` Button,\num einen Trade zu Starten.')
+    );
 
                     const row = new ActionRowBuilder().addComponents(
                         new ButtonBuilder()

@@ -11,30 +11,30 @@ const constants = require('../config/constants');
 
 module.exports = async function handleSelectMenu(interaction) {
     if (interaction.customId.startsWith('select_spawner:')) {
-        const tradeType = interaction.customId.split(':')[1];
+        const tradeType = interaction.customId.split(':')[1]; // "ankauf" oder "verkauf"
         const spawnerType = interaction.values[0];
 
-        const price = constants.prices[spawnerType]?.[tradeType];
-        if (price === 'Stop' || price === undefined) {
+        const priceInfo = constants.prices[spawnerType];
+        const isStopped = !priceInfo || priceInfo[tradeType] === 'Stop' || priceInfo[tradeType] === undefined;
+
+        if (isStopped) {
+            const actionLabel = tradeType === 'ankauf' ? 'ANKAUF' : 'VERKAUF';
+            
             await interaction.update({
-                components: [
-                    new ContainerBuilder()
-                        .addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent(
-                                `## ❌ • Nicht verfügbar\n\n` +
-                                `**${spawnerType}** (${tradeType}) ist aktuell gesperrt.\n` +
-                                `Bitte versuche es später erneut oder wähle einen anderen Spawner.`
-                            )
-                        )
-                ],
+                components: [], // Alle Komponenten entfernen
+                content: `## ❌ • ${spawnerType} ${actionLabel} derzeit nicht verfügbar\n\n` +
+                    `Der **${spawnerType}** ${actionLabel.toLowerCase()} ist aktuell **gestoppt**.\n` +
+                    `Bitte prüfe später wieder oder wähle einen anderen Spawner.\n\n` +
+                    `📌 *Dieser Status wird vom Admin verwaltet.*`,
                 flags: MessageFlags.IsComponentsV2
             });
             return;
         }
 
+        const price = priceInfo[tradeType];
         const modal = new ModalBuilder()
             .setCustomId(`trade_modal:${tradeType}:${spawnerType}`)
-            .setTitle(tradeType === 'ankauf' ? '🛒 Spawner Ankauf' : '💰 Spawner Verkauf');
+            .setTitle(`${tradeType === 'ankauf' ? '🛒' : '💰'} ${spawnerType} ${actionLabel === 'ANKAUF' ? 'Ankauf' : 'Verkauf'}`);
 
         const ingameNameInput = new TextInputBuilder()
             .setCustomId('ingame_name')

@@ -218,44 +218,73 @@ module.exports = async function handleButton(interaction) {
         return;
     }
 
-    // === SPAWNER ANKAUF BUTTON (DYNAMIC) ===
-    if (interaction.customId === 'spawner_ankaufen') {
-        const ankaufOptions = Object.entries(constants.prices)
-            .filter(([name, prices]) => prices.ankauf !== 'Stop' && prices.ankauf !== undefined)
-            .map(([name, prices]) => ({
-                label: `${constants.spawnerEmojis[name] || '📦'} ${name} Spawner`,
-                description: `Preis: ${prices.ankauf.toFixed(1)}M`,
-                value: name,
-                emoji: constants.spawnerEmojis[name] || '📦'
-            }));
+// === SPAWNER ANKAUF BUTTON (ALLE SICHTBAR MIT STATUS) ===
+if (interaction.customId === 'spawner_ankaufen') {
+    const ankaufOptions = Object.entries(constants.prices).map(([name, prices]) => {
+        const isStopped = prices.ankauf === 'Stop' || prices.ankauf === undefined;
+        return {
+            label: `${constants.spawnerEmojis[name] || '📦'} ${name} Spawner`,
+            description: isStopped 
+                ? '⚠️ Ankauf derzeit GESPERRT' 
+                : `Preis: ${prices.ankauf.toFixed(1)}M`,
+            value: name,
+            emoji: constants.spawnerEmojis[name] || '📦'
+        };
+    });
 
-        if (ankaufOptions.length === 0) {
-            await interaction.reply({
-                content: '## ❌ • Keine Spawner verfügbar\n\nAktuell können keine Spawner gekauft werden.',
-                flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
-            });
-            return;
-        }
+    const selectMenu = new StringSelectMenuBuilder()
+        .setCustomId('select_spawner:ankauf')
+        .setPlaceholder('Spawner auswählen...')
+        .addOptions(ankaufOptions);
 
-        const selectMenu = new StringSelectMenuBuilder()
-            .setCustomId('select_spawner:ankauf')
-            .setPlaceholder('Spawner auswählen...')
-            .addOptions(ankaufOptions);
+    const row = new ActionRowBuilder().addComponents(selectMenu);
 
-        const row = new ActionRowBuilder().addComponents(selectMenu);
+    const container = new ContainerBuilder()
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent('## 🛒 • Spawner Ankauf\nWähle unten den Spawner, den du **kaufen** möchtest.')
+        )
+        .addActionRowComponents(row);
 
-        const container = new ContainerBuilder()
-            .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent('## 🛒 • Spawner Ankauf\nWähle unten den Spawner, den du **kaufen** möchtest.')
-            )
-            .addActionRowComponents(row);
+    await interaction.reply({
+        components: [container],
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+    });
+    return;
+}
 
-        await interaction.reply({
-            components: [container],
-            flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
-        });
-        return;
-    }
+// === SPAWNER VERKAUF BUTTON (ALLE SICHTBAR MIT STATUS) ===
+if (interaction.customId === 'spawner_verkaufen') {
+    const verkaufOptions = Object.entries(constants.prices).map(([name, prices]) => {
+        const isStopped = prices.verkauf === 'Stop' || prices.verkauf === undefined;
+        return {
+            label: `${constants.spawnerEmojis[name] || '📦'} ${name} Spawner`,
+            description: isStopped 
+                ? '⚠️ Verkauf derzeit GESPERRT' 
+                : `Du bekommst: ${prices.verkauf.toFixed(1)}M`,
+            value: name,
+            emoji: constants.spawnerEmojis[name] || '📦'
+        };
+    });
+
+    const selectMenu = new StringSelectMenuBuilder()
+        .setCustomId('select_spawner:verkauf')
+        .setPlaceholder('Spawner auswählen...')
+        .addOptions(verkaufOptions);
+
+    const row = new ActionRowBuilder().addComponents(selectMenu);
+
+    const container = new ContainerBuilder()
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent('## 💰 • Spawner Verkauf\nWähle unten den Spawner, den du **verkaufen** möchtest.')
+        )
+        .addActionRowComponents(row);
+
+    await interaction.reply({
+        components: [container],
+        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+    });
+    return;
+}
 
     // === SPAWNER VERKAUF BUTTON (DYNAMIC) ===
     if (interaction.customId === 'spawner_verkaufen') {
