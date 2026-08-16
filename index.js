@@ -283,7 +283,7 @@ const spawnerEmoji = spawnerEmojis[spawnerType] || '❌';
 const container = new ContainerBuilder()
     .addTextDisplayComponents(
         new TextDisplayBuilder().setContent(
-            `## ${emoji} • Spawner ${action}\n\n` 
+            `## ${emoji} • Spawner ${action}\n\n` +
             `**🤝 • Handel #${handNummer}**`   
         )
     )
