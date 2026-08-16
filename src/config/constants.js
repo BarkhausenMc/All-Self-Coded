@@ -1,0 +1,14 @@
+module.exports = {
+    prices: {
+        Skeleton: { ankauf: 10.0, verkauf: 8.0 },
+        Creeper:  { ankauf: 10.0, verkauf: 9.0 }
+    },
+
+    spawnerEmojis: {
+        Skeleton: '💀',
+        Creeper:  '💥'
+    },
+
+    TRADER_ROLE_ID: process.env.TRADER_ROLE_ID,
+    CHANNEL_ID: process.env.CHANNEL_ID
+};

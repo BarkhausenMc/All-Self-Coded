@@ -4,150 +4,39 @@ const {
     ActionRowBuilder,
     ButtonBuilder,
     ButtonStyle,
-    StringSelectMenuBuilder,
     ContainerBuilder,
     TextDisplayBuilder,
     SeparatorBuilder,
-    MessageFlags,
-    ChannelType,
-    ModalBuilder,
-    TextInputBuilder,
-    TextInputStyle
+    MessageFlags
 } = require('discord.js');
 require('dotenv').config();
 
+// Eigene Module importieren
+const { constants } = require('./src/config/constants');
+const handleButton = require('./src/handlers/buttonHandler');
+const handleSelectMenu = require('./src/handlers/selectMenuHandler');
+const handleModal = require('./src/handlers/modalHandler');
+
+// Client mit Intents erstellen
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMembers  // ← NEU: Brauchen wir um Trader-Rolle Mitglieder zu holen
+        GatewayIntentBits.GuildMembers  // Braucht Privileged Intent im Developer Portal!
     ]
 });
 
-// GLOBALE DATEN
-const tradeCounters = {};
-const trades = {};
-
-// PREIS- UND EMOJI-TABELLEN
-const prices = {
-    Skeleton: { ankauf: 10.0, verkauf: 8.0 },
-    Creeper:  { ankauf: 10.0, verkauf: 9.0 }
-};
-
-const spawnerEmojis = {
-    Skeleton: '💀',
-    Creeper:  '💥'
-};
-
-// =====================================================
-// HELPER-FUNKTION 1: Container bauen (nur Text, keine Buttons)
-// =====================================================
-function buildTradeContainer(data) {
-    // Status-Text dynamisch bestimmen
-    let statusText;
-    if (data.cancelled) {
-        statusText = `❌ **Trade abgebrochen!**\n\nDieser Thread wurde abgebrochen.`;
-    } else if (data.closed) {
-        statusText = `✅ **Trade abgeschlossen!**\n\nDieser Thread wurde geschlossen.`;
-    } else if (data.claimedBy) {
-        statusText = `🔒 Das Ticket wurde von <@${data.claimedBy}> geclaimt.`;
-    } else {
-        statusText = `🔓 Das Ticket wurde noch nicht geclaimt!`;
-    }
-
-    return new ContainerBuilder()
-        .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(
-                `## ${data.emoji} • Spawner ${data.action}\n\n` +
-                `**🤝 • Handel #${data.handNummer}**`
-            )
-        )
-        .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
-        .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(
-                `**👤 Kunde:** <@${data.kundeId}>\n` +
-                `**🎮 ING:** \`${data.ingameName}\`\n` +
-                `**${data.spawnerEmoji} Spawner:** ${data.spawnerType}\n`
-            )
-        )
-        .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
-        .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(
-                `**📦 Menge:** ${data.amount}\n` +
-                `**💵 Preis/Stk:** ${data.pricePerUnit.toFixed(1)}M\n` +
-                `**💰 Gesamtpreis:** ${data.totalPrice.toFixed(1)}M`
-            )
-        )
-        .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
-        .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(statusText)
-        );
-}
-
-// =====================================================
-// HELPER-FUNKTION 2: Button-Row bauen (abhängig vom Status)
-// =====================================================
-function buildActionButtonRow(data) {
-    // Wenn Trade geschlossen oder abgebrochen → keine Buttons
-    if (data.closed || data.cancelled) return null;
-
-    if (data.claimedBy) {
-        // Geclaimt → [Schließen] [Abbrechen]
-        return new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId('close')
-                .setLabel('Schließen')
-                .setStyle(ButtonStyle.Success)
-                .setEmoji('✅'),
-            new ButtonBuilder()
-                .setCustomId('abbruch')
-                .setLabel('Abbrechen')
-                .setStyle(ButtonStyle.Danger)
-                .setEmoji('❌')
-        );
-    } else {
-        // Nicht geclaimt → [Claim] [Abbrechen]
-        return new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId('claim')
-                .setLabel('Claim')
-                .setStyle(ButtonStyle.Primary)
-                .setEmoji('🙋‍♂️'),
-            new ButtonBuilder()
-                .setCustomId('abbruch')
-                .setLabel('Abbrechen')
-                .setStyle(ButtonStyle.Danger)
-                .setEmoji('❌')
-        );
-    }
-}
-
-// =====================================================
-// HELPER-FUNKTION 3: Nachricht aktualisieren (Container + Buttons)
-// =====================================================
-async function updateTradeMessage(channel, trade) {
-    const container = buildTradeContainer(trade);
-    const actionRow = buildActionButtonRow(trade);
-    const components = actionRow ? [container, actionRow] : [container];
-
-    const msg = await channel.messages.fetch(trade.messageId);
-    await msg.edit({
-        components,
-        flags: MessageFlags.IsComponentsV2
-    });
-}
-
-// =====================================================
-// READY EVENT
-// =====================================================
+// ==========================================
+// READY EVENT — Trading Panel senden
+// ==========================================
 client.once('ready', async () => {
     console.log('Bot ist online!');
 
-    const channel = client.channels.cache.get('1537389571103522868');
+    const channel = client.channels.cache.get(constants.CHANNEL_ID);
 
     if (channel) {
         const container = new ContainerBuilder()
             .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent('## 🛒 • SPAWNER TRADING • 💰\n*Yayks Spawner Tarding*')
+                new TextDisplayBuilder().setContent('## 🛒 • SPAWNER TRADING • 💰\n*Yayks Spawner Trading*')
             )
             .addSeparatorComponents(
                 new SeparatorBuilder().setDivider(true).setSpacing(1)
@@ -200,287 +89,28 @@ client.once('ready', async () => {
     }
 });
 
-// =====================================================
-// INTERACTION CREATE LISTENER
-// =====================================================
+// ==========================================
+// INTERACTION CREATE — An Handler weiterleiten
+// ==========================================
 client.on('interactionCreate', async (interaction) => {
-
-    // ==========================================
-    // 1. BUTTON HANDLER
-    // ==========================================
-    if (interaction.isButton()) {
-
-        // --- CLAIM BUTTON ---
-        if (interaction.customId === 'claim') {
-            const trade = trades[interaction.channelId];
-
-            if (!trade) {
-                await interaction.reply({ content: '❌ Trade nicht gefunden.', flags: MessageFlags.Ephemeral });
-                return;
-            }
-
-            if (trade.claimedBy) {
-                await interaction.reply({
-                    content: `❌ Bereits von <@${trade.claimedBy}> geclaimt.`,
-                    flags: MessageFlags.Ephemeral
-                });
-                return;
-            }
-
-            trade.claimedBy = interaction.user.id;
-
-            // Nachricht updaten (jetzt mit [Schließen] [Abbrechen] statt [Claim] [Abbrechen])
-            await updateTradeMessage(interaction.channel, trade);
-
-            await interaction.reply({
-                content: `✅ Du hast den Trade geclaimt!`,
-                flags: MessageFlags.Ephemeral
-            });
-            return;
+    try {
+        if (interaction.isButton()) {
+            await handleButton(interaction);
+        } else if (interaction.isStringSelectMenu()) {
+            await handleSelectMenu(interaction);
+        } else if (interaction.isModalSubmit()) {
+            await handleModal(interaction);
         }
-
-        // --- CLOSE BUTTON (Trade abschließen) ---
-        if (interaction.customId === 'close') {
-            const trade = trades[interaction.channelId];
-
-            if (!trade || !trade.claimedBy) {
-                await interaction.reply({
-                    content: '❌ Der Trade muss erst geclaimt werden.',
-                    flags: MessageFlags.Ephemeral
-                });
-                return;
-            }
-
-            if (interaction.user.id !== trade.claimedBy) {
-                await interaction.reply({
-                    content: `❌ Nur <@${trade.claimedBy}> darf diesen Trade abschließen.`,
-                    flags: MessageFlags.Ephemeral
-                });
-                return;
-            }
-
-            trade.closed = true;
-
-            // Nachricht updaten (keine Buttons mehr, "abgeschlossen" Text)
-            await updateTradeMessage(interaction.channel, trade);
-
-            // Thread archivieren
-            await interaction.channel.setArchived(true);
-
-            delete trades[interaction.channelId];
-
-            await interaction.reply({
-                content: `✅ Trade wurde abgeschlossen und der Thread archiviert.`,
-                flags: MessageFlags.Ephemeral
-            });
-            return;
-        }
-
-        // --- ABBRUCH BUTTON (Trade abbrechen) ---
-        if (interaction.customId === 'abbruch') {
-            const trade = trades[interaction.channelId];
-
-            if (!trade) {
-                await interaction.reply({
-                    content: '❌ Trade nicht gefunden.',
-                    flags: MessageFlags.Ephemeral
-                });
-                return;
-            }
-
-            trade.cancelled = true;
-
-            // Nachricht updaten (keine Buttons mehr, "abgebrochen" Text)
-            await updateTradeMessage(interaction.channel, trade);
-
-            // Thread archivieren
-            await interaction.channel.setArchived(true);
-
-            delete trades[interaction.channelId];
-
-            await interaction.reply({
-                content: `❌ Trade wurde abgebrochen und der Thread archiviert.`,
-                flags: MessageFlags.Ephemeral
-            });
-            return;
-        }
-
-        // --- SPAWNER TRADING BUTTONS ---
-        switch (interaction.customId) {
-            case 'spawner_ankaufen': {
-                const selectMenu = new StringSelectMenuBuilder()
-                    .setCustomId('select_spawner:ankauf')
-                    .setPlaceholder('Spawner auswählen...')
-                    .addOptions([
-                        { label: '💀 Skeleton Spawner', description: 'Preis: 10.0M', value: 'Skeleton', emoji: '💀' },
-                        { label: '💥 Creeper Spawner', description: 'Preis: 10.0M', value: 'Creeper', emoji: '💥' }
-                    ]);
-
-                const row = new ActionRowBuilder().addComponents(selectMenu);
-
-                const container = new ContainerBuilder()
-                    .addTextDisplayComponents(
-                        new TextDisplayBuilder().setContent('## 🛒 • Spawner Ankauf\nWähle unten den Spawner, den du **kaufen** möchtest.')
-                    )
-                    .addActionRowComponents(row);
-
-                await interaction.reply({
-                    components: [container],
-                    flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
-                });
-                break;
-            }
-
-            case 'spawner_verkaufen': {
-                const selectMenu = new StringSelectMenuBuilder()
-                    .setCustomId('select_spawner:verkauf')
-                    .setPlaceholder('Spawner auswählen...')
-                    .addOptions([
-                        { label: '💀 Skeleton Spawner', description: 'Du bekommst: 8.0M', value: 'Skeleton', emoji: '💀' },
-                        { label: '💥 Creeper Spawner', description: 'Du bekommst: 9.0M', value: 'Creeper', emoji: '💥' }
-                    ]);
-
-                const row = new ActionRowBuilder().addComponents(selectMenu);
-
-                const container = new ContainerBuilder()
-                    .addTextDisplayComponents(
-                        new TextDisplayBuilder().setContent('## 💰 • Spawner Verkauf\nWähle unten den Spawner, den du **verkaufen** möchtest.')
-                    )
-                    .addActionRowComponents(row);
-
-                await interaction.reply({
-                    components: [container],
-                    flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
-                });
-                break;
-            }
-        }
-    }
-
-    // ==========================================
-    // 2. SELECT MENU → Modal öffnen
-    // ==========================================
-    if (interaction.isStringSelectMenu()) {
-        if (interaction.customId.startsWith('select_spawner:')) {
-            const tradeType = interaction.customId.split(':')[1];
-            const spawnerType = interaction.values[0];
-
-            const modal = new ModalBuilder()
-                .setCustomId(`trade_modal:${tradeType}:${spawnerType}`)
-                .setTitle(tradeType === 'ankauf' ? '🛒 Spawner Ankauf' : '💰 Spawner Verkauf');
-
-            const ingameNameInput = new TextInputBuilder()
-                .setCustomId('ingame_name')
-                .setLabel('Wie lautet dein Ingame-Name?')
-                .setStyle(TextInputStyle.Short)
-                .setPlaceholder('z.B. Steve')
-                .setRequired(true);
-
-            const amountInput = new TextInputBuilder()
-                .setCustomId('amount')
-                .setLabel(tradeType === 'ankauf' ? 'Wie viele Spawner möchtest du kaufen?' : 'Wie viele Spawner möchtest du verkaufen?')
-                .setStyle(TextInputStyle.Short)
-                .setPlaceholder('z.B. 3')
-                .setRequired(true);
-
-            modal.addComponents(
-                new ActionRowBuilder().addComponents(ingameNameInput),
-                new ActionRowBuilder().addComponents(amountInput)
-            );
-
-            await interaction.showModal(modal);
-        }
-    }
-
-    // ==========================================
-    // 3. MODAL SUBMIT → Thread erstellen
-    // ==========================================
-    if (interaction.isModalSubmit()) {
-        if (interaction.customId.startsWith('trade_modal:')) {
-            const parts = interaction.customId.split(':');
-            const tradeType = parts[1];
-            const spawnerType = parts[2];
-            const ingameName = interaction.fields.getTextInputValue('ingame_name');
-            const amount = interaction.fields.getTextInputValue('amount');
-
-            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
-            tradeCounters[interaction.user.id] = (tradeCounters[interaction.user.id] || 0) + 1;
-            const handNummer = tradeCounters[interaction.user.id];
-
-            const emoji = tradeType === 'ankauf' ? '🛒' : '💰';
-            const action = tradeType === 'ankauf' ? 'Ankauf' : 'Verkauf';
-            const spawnerEmoji = spawnerEmojis[spawnerType] || '❌';
-            const pricePerUnit = prices[spawnerType][tradeType];
-            const totalPrice = pricePerUnit * parseInt(amount);
-
-            // Thread erstellen
-            const thread = await interaction.channel.threads.create({
-                name: `${emoji} ${action} - ${interaction.user.username}`,
-                type: ChannelType.PrivateThread,
-                invitable: false
-            });
-
-            // Kunden zum Thread hinzufügen
-            await thread.members.add(interaction.user.id);
-
-            // --- TRADER-ROLLE in den Thread einladen ---
-            if (process.env.TRADER_ROLE_ID) {
-                try {
-                    const allMembers = await interaction.guild.members.fetch();
-                    const traders = allMembers.filter(m => m.roles.cache.has(process.env.TRADER_ROLE_ID));
-                    for (const [, trader] of traders) {
-                        await thread.members.add(trader.id).catch(() => {});
-                    }
-                } catch (err) {
-                    console.log('Konnte Trader nicht hinzufügen:', err.message);
-                }
-            }
-
-            // Trade-Daten sammeln
-            const tradeData = {
-                messageId: null,
-                claimedBy: null,
-                closed: false,
-                cancelled: false,
-                kundeId: interaction.user.id,
-                ingameName,
-                spawnerType,
-                spawnerEmoji,
-                amount,
-                pricePerUnit,
-                totalPrice,
-                handNummer,
-                emoji,
-                action
-            };
-
-            // Container + Buttons bauen
-            const container = buildTradeContainer(tradeData);
-            const actionRow = buildActionButtonRow(tradeData);
-
-            // Nachricht senden (Container + Button-Row separat)
-            const tradeMsg = await thread.send({
-                components: [container, actionRow],
-                flags: MessageFlags.IsComponentsV2
-            });
-
-            // Trade-Daten speichern
-            tradeData.messageId = tradeMsg.id;
-            trades[thread.id] = tradeData;
-
-            // User bestätigen
-            await interaction.editReply({
-                components: [
-                    new ContainerBuilder()
-                        .addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent(`✅ Dein Trade-Thread wurde erstellt: <#${thread.id}>`)
-                        )
-                ],
-                flags: MessageFlags.IsComponentsV2
-            });
+    } catch (error) {
+        console.error('Fehler bei Interaction:', error);
+        // Falls noch nicht geantwortet wurde, versuche eine Fehlermeldung
+        if (!interaction.replied && !interaction.deferred) {
+            await interaction.reply({ content: '❌ Ein Fehler ist aufgetreten.', flags: MessageFlags.Ephemeral }).catch(() => {});
         }
     }
 });
 
+// ==========================================
+// LOGIN
+// ==========================================
 client.login(process.env.DISCORD_TOKEN);
