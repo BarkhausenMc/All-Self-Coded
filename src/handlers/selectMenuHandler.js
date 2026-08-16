@@ -1,4 +1,12 @@
-const { ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags } = require('discord.js');
+const { 
+    ActionRowBuilder, 
+    ModalBuilder, 
+    TextInputBuilder, 
+    TextInputStyle, 
+    MessageFlags,
+    ContainerBuilder,      // ← FEHLTE
+    TextDisplayBuilder     // ← FEHLTE
+} = require('discord.js');
 const constants = require('../config/constants');
 
 module.exports = async function handleSelectMenu(interaction) {
