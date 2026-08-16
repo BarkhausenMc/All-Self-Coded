@@ -13,7 +13,6 @@ const store = require('../data/store');
 const constants = require('../config/constants');
 const updateTradeMessage = require('../utils/updateTradeMessage');
 const buildTradeContainer = require('../utils/buildTradeContainer');
-const { testedVersions } = require('mineflayer');
 
 // === HELPER: Trade finden mit mehreren IDs ===
 function findTrade(channelId) {
