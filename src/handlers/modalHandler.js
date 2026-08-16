@@ -86,16 +86,38 @@ module.exports = async function handleModal(interaction) {
         const actionRow = buildActionButtonRow(tradeData);
 
         const tradeMsg = await thread.send({
-            components: [container, actionRow],
-            flags: MessageFlags.IsComponentsV2
-        });
+    components: [container, actionRow],
+    flags: MessageFlags.IsComponentsV2
+});
 
-        // === TRADER PING ===
-        if (constants.TRADER_ROLE_ID) {
+console.log('✅ Trade-Nachricht gesendet:', tradeMsg.id);
+
+// === TRADER PING (VERBESSERT) ===
+if (constants.TRADER_ROLE_ID) {
+    console.log('🔔 Trader-Ping senden...');
+    console.log('   Role ID:', constants.TRADER_ROLE_ID);
+    
+    // Prüfen ob Rolle existiert
+    try {
+        const role = await interaction.guild.roles.fetch(constants.TRADER_ROLE_ID);
+        if (role) {
+            console.log('   Rolle gefunden:', role.name);
+            
+            // Warte kurz, damit Thread bereit ist
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
             await thread.send({
                 content: `<@&${constants.TRADER_ROLE_ID}> — Neuer Trade von \`${data.ingameName}\`! 📢`
             });
+            
+            console.log('✅ Trader-Ping erfolgreich gesendet');
+        } else {
+            console.error('❌ Rolle nicht gefunden:', constants.TRADER_ROLE_ID);
         }
+    } catch (err) {
+        console.error('❌ Fehler beim Fetch der Rolle:', err.message);
+    }
+}
 
         // === TRADE IN LOG POSTEN ===
         if (constants.LOG_CHANNEL_ID) {
