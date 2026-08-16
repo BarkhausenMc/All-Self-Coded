@@ -90,9 +90,9 @@ client.on('interactionCreate', async (interaction) => {
                     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
                     const priceLines = Object.entries(constants.prices).map(([name, prices]) => {
-                        const ankauf = prices.ankauf === 'Stop' ? 'GESPERRT' : `${prices.ankauf.toFixed(1)}M`;
-                        const verkauf = prices.verkauf === 'Stop' ? 'GESPERRT' : `${prices.verkauf.toFixed(1)}M`;
-                        const emoji = constants.spawnerEmojis[name] || '📦';
+                        const ankauf = prices.ankauf === 'Stop' ? 'STOP' : `${prices.ankauf.toFixed(1)}M`;
+                        const verkauf = prices.verkauf === 'Stop' ? 'STOP' : `${prices.verkauf.toFixed(1)}M`;
+                        const emoji = constants.spawnerEmojis[name] || '❌';
                         return `${emoji} ${name.padEnd(12)} ${ankauf.padStart(10)}  ${verkauf.padStart(10)}`;
                     }).join('\n');
 
