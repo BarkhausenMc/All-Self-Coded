@@ -103,7 +103,7 @@ const priceLines = Object.entries(constants.prices).map(([name, prices]) => {
 
 const container = new ContainerBuilder()
     .addTextDisplayComponents(
-        new TextDisplayBuilder().setContent('## 🛒 • SPAWNER TRADING • 💰\n*Yayks Spawner Trading*\n||**Only Trusted Trader, Faire Preise 💜**||')
+        new TextDisplayBuilder().setContent('## 🛒 • SPAWNER TRADING • 💰\n*Yayks Spawner Trading*\n||*Only Trusted Trader, Faire Preise 💜*||')
     )
     .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
     .addTextDisplayComponents(
