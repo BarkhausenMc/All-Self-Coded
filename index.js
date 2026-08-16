@@ -17,14 +17,17 @@ const {
 require('dotenv').config();
 
 const client = new Client({
-    intents: [GatewayIntentBits.Guilds]
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMembers  // ← NEU: Brauchen wir um Trader-Rolle Mitglieder zu holen
+    ]
 });
 
 // GLOBALE DATEN
 const tradeCounters = {};
 const trades = {};
 
-// PREIS- UND EMOJI-TABELLEN (global, nicht inside functions)
+// PREIS- UND EMOJI-TABELLEN
 const prices = {
     Skeleton: { ankauf: 10.0, verkauf: 8.0 },
     Creeper:  { ankauf: 10.0, verkauf: 9.0 }
@@ -35,11 +38,21 @@ const spawnerEmojis = {
     Creeper:  '💥'
 };
 
-// HELPER-FUNKTION
+// =====================================================
+// HELPER-FUNKTION 1: Container bauen (nur Text, keine Buttons)
+// =====================================================
 function buildTradeContainer(data) {
-    const claimText = data.claimedBy
-        ? `🔒 Das Ticket wurde von <@${data.claimedBy}> geclaimt.`
-        : `🔓 Das Ticket wurde noch nicht geclaimt!`;
+    // Status-Text dynamisch bestimmen
+    let statusText;
+    if (data.cancelled) {
+        statusText = `❌ **Trade abgebrochen!**\n\nDieser Thread wurde abgebrochen.`;
+    } else if (data.closed) {
+        statusText = `✅ **Trade abgeschlossen!**\n\nDieser Thread wurde geschlossen.`;
+    } else if (data.claimedBy) {
+        statusText = `🔒 Das Ticket wurde von <@${data.claimedBy}> geclaimt.`;
+    } else {
+        statusText = `🔓 Das Ticket wurde noch nicht geclaimt!`;
+    }
 
     return new ContainerBuilder()
         .addTextDisplayComponents(
@@ -66,10 +79,66 @@ function buildTradeContainer(data) {
         )
         .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
         .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(claimText)
+            new TextDisplayBuilder().setContent(statusText)
         );
 }
 
+// =====================================================
+// HELPER-FUNKTION 2: Button-Row bauen (abhängig vom Status)
+// =====================================================
+function buildActionButtonRow(data) {
+    // Wenn Trade geschlossen oder abgebrochen → keine Buttons
+    if (data.closed || data.cancelled) return null;
+
+    if (data.claimedBy) {
+        // Geclaimt → [Schließen] [Abbrechen]
+        return new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId('close')
+                .setLabel('Schließen')
+                .setStyle(ButtonStyle.Success)
+                .setEmoji('✅'),
+            new ButtonBuilder()
+                .setCustomId('abbruch')
+                .setLabel('Abbrechen')
+                .setStyle(ButtonStyle.Danger)
+                .setEmoji('❌')
+        );
+    } else {
+        // Nicht geclaimt → [Claim] [Abbrechen]
+        return new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId('claim')
+                .setLabel('Claim')
+                .setStyle(ButtonStyle.Primary)
+                .setEmoji('🙋‍♂️'),
+            new ButtonBuilder()
+                .setCustomId('abbruch')
+                .setLabel('Abbrechen')
+                .setStyle(ButtonStyle.Danger)
+                .setEmoji('❌')
+        );
+    }
+}
+
+// =====================================================
+// HELPER-FUNKTION 3: Nachricht aktualisieren (Container + Buttons)
+// =====================================================
+async function updateTradeMessage(channel, trade) {
+    const container = buildTradeContainer(trade);
+    const actionRow = buildActionButtonRow(trade);
+    const components = actionRow ? [container, actionRow] : [container];
+
+    const msg = await channel.messages.fetch(trade.messageId);
+    await msg.edit({
+        components,
+        flags: MessageFlags.IsComponentsV2
+    });
+}
+
+// =====================================================
+// READY EVENT
+// =====================================================
 client.once('ready', async () => {
     console.log('Bot ist online!');
 
@@ -131,20 +200,28 @@ client.once('ready', async () => {
     }
 });
 
+// =====================================================
+// INTERACTION CREATE LISTENER
+// =====================================================
 client.on('interactionCreate', async (interaction) => {
 
-    // --- 1. BUTTON HANDLER ---
+    // ==========================================
+    // 1. BUTTON HANDLER
+    // ==========================================
     if (interaction.isButton()) {
-        
-        // Claim Button (separater Block)
+
+        // --- CLAIM BUTTON ---
         if (interaction.customId === 'claim') {
             const trade = trades[interaction.channelId];
 
-            if (!trade || trade.claimedBy) {
+            if (!trade) {
+                await interaction.reply({ content: '❌ Trade nicht gefunden.', flags: MessageFlags.Ephemeral });
+                return;
+            }
+
+            if (trade.claimedBy) {
                 await interaction.reply({
-                    content: trade?.claimedBy
-                        ? `❌ Bereits von <@${trade.claimedBy}> geclaimt.`
-                        : '❌ Trade nicht gefunden.',
+                    content: `❌ Bereits von <@${trade.claimedBy}> geclaimt.`,
                     flags: MessageFlags.Ephemeral
                 });
                 return;
@@ -152,13 +229,8 @@ client.on('interactionCreate', async (interaction) => {
 
             trade.claimedBy = interaction.user.id;
 
-            const updatedContainer = buildTradeContainer(trade);
-
-            const msg = await interaction.channel.messages.fetch(trade.messageId);
-            await msg.edit({
-                components: [updatedContainer],
-                flags: MessageFlags.IsComponentsV2
-            });
+            // Nachricht updaten (jetzt mit [Schließen] [Abbrechen] statt [Claim] [Abbrechen])
+            await updateTradeMessage(interaction.channel, trade);
 
             await interaction.reply({
                 content: `✅ Du hast den Trade geclaimt!`,
@@ -166,78 +238,74 @@ client.on('interactionCreate', async (interaction) => {
             });
             return;
         }
-// --- CLOSE BUTTON HANDLER (ganz oben im interactionCreate, nach Claim Handler) ---
-if (interaction.customId === 'close') {
-    const trade = trades[interaction.channelId];
 
-    // Prüfen ob Thread geclaimt ist
-    if (!trade || !trade.claimedBy) {
-        await interaction.reply({
-            content: '❌ Der Trade muss erst geclaimt werden, bevor du ihn schließen kannst.',
-            flags: MessageFlags.Ephemeral
-        });
-        return;
-    }
+        // --- CLOSE BUTTON (Trade abschließen) ---
+        if (interaction.customId === 'close') {
+            const trade = trades[interaction.channelId];
 
-    // Prüfen ob nur der Claimer schließen darf
-    if (interaction.user.id !== trade.claimedBy) {
-        await interaction.reply({
-            content: `❌ Nur <@${trade.claimedBy}> darf diesen Trade schließen.`,
-            flags: MessageFlags.Ephemeral
-        });
-        return;
-    }
+            if (!trade || !trade.claimedBy) {
+                await interaction.reply({
+                    content: '❌ Der Trade muss erst geclaimt werden.',
+                    flags: MessageFlags.Ephemeral
+                });
+                return;
+            }
 
-    // Container neu bauen OHNE Buttons (mit "abgeschlossen"-Text)
-    const closeContainer = new ContainerBuilder()
-        .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(
-                `## ${trade.emoji} • Spawner ${trade.action}\n\n` +
-                `**🤝 • Handel #${trade.handNummer}**`
-            )
-        )
-        .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
-        .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(
-                `**👤 Kunde:** <@${trade.kundeId}>\n` +
-                `**🎮 ING:** \`${trade.ingameName}\`\n` +
-                `**${trade.spawnerEmoji} Spawner:** ${trade.spawnerType}\n`
-            )
-        )
-        .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
-        .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(
-                `**📦 Menge:** ${trade.amount}\n` +
-                `**💵 Preis/Stk:** ${trade.pricePerUnit.toFixed(1)}M\n` +
-                `**💰 Gesamtpreis:** ${trade.totalPrice.toFixed(1)}M`
-            )
-        )
-        .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
-        .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(
-                `✅ **Thread abgeschlossen!**\n\nDieser Thread wurde geschlossen.`
-            )
-        );
+            if (interaction.user.id !== trade.claimedBy) {
+                await interaction.reply({
+                    content: `❌ Nur <@${trade.claimedBy}> darf diesen Trade abschließen.`,
+                    flags: MessageFlags.Ephemeral
+                });
+                return;
+            }
 
-    // Original-Nachricht bearbeiten (Buttons entfernen)
-    const msg = await interaction.channel.messages.fetch(trade.messageId);
-    await msg.edit({
-        components: [closeContainer],  // ← NUR Container, KEINE Buttons mehr
-        flags: MessageFlags.IsComponentsV2
-    });
+            trade.closed = true;
 
-    // Thread archivieren oder löschen
-    await interaction.channel.setArchived(true);
+            // Nachricht updaten (keine Buttons mehr, "abgeschlossen" Text)
+            await updateTradeMessage(interaction.channel, trade);
 
-    // Trade aus trades entfernen
-    delete trades[interaction.channelId];
+            // Thread archivieren
+            await interaction.channel.setArchived(true);
 
-    await interaction.reply({
-        content: `✅ Thread wurde geschlossen.`,
-        flags: MessageFlags.Ephemeral
-    });
-}
-        // Spawner Trading Buttons
+            delete trades[interaction.channelId];
+
+            await interaction.reply({
+                content: `✅ Trade wurde abgeschlossen und der Thread archiviert.`,
+                flags: MessageFlags.Ephemeral
+            });
+            return;
+        }
+
+        // --- ABBRUCH BUTTON (Trade abbrechen) ---
+        if (interaction.customId === 'abbruch') {
+            const trade = trades[interaction.channelId];
+
+            if (!trade) {
+                await interaction.reply({
+                    content: '❌ Trade nicht gefunden.',
+                    flags: MessageFlags.Ephemeral
+                });
+                return;
+            }
+
+            trade.cancelled = true;
+
+            // Nachricht updaten (keine Buttons mehr, "abgebrochen" Text)
+            await updateTradeMessage(interaction.channel, trade);
+
+            // Thread archivieren
+            await interaction.channel.setArchived(true);
+
+            delete trades[interaction.channelId];
+
+            await interaction.reply({
+                content: `❌ Trade wurde abgebrochen und der Thread archiviert.`,
+                flags: MessageFlags.Ephemeral
+            });
+            return;
+        }
+
+        // --- SPAWNER TRADING BUTTONS ---
         switch (interaction.customId) {
             case 'spawner_ankaufen': {
                 const selectMenu = new StringSelectMenuBuilder()
@@ -289,7 +357,9 @@ if (interaction.customId === 'close') {
         }
     }
 
-    // --- 2. SELECT MENU → Modal öffnen ---
+    // ==========================================
+    // 2. SELECT MENU → Modal öffnen
+    // ==========================================
     if (interaction.isStringSelectMenu()) {
         if (interaction.customId.startsWith('select_spawner:')) {
             const tradeType = interaction.customId.split(':')[1];
@@ -322,7 +392,9 @@ if (interaction.customId === 'close') {
         }
     }
 
-    // --- 3. MODAL SUBMIT → Thread erstellen ---
+    // ==========================================
+    // 3. MODAL SUBMIT → Thread erstellen
+    // ==========================================
     if (interaction.isModalSubmit()) {
         if (interaction.customId.startsWith('trade_modal:')) {
             const parts = interaction.customId.split(':');
@@ -342,16 +414,35 @@ if (interaction.customId === 'close') {
             const pricePerUnit = prices[spawnerType][tradeType];
             const totalPrice = pricePerUnit * parseInt(amount);
 
+            // Thread erstellen
             const thread = await interaction.channel.threads.create({
                 name: `${emoji} ${action} - ${interaction.user.username}`,
                 type: ChannelType.PrivateThread,
                 invitable: false
             });
 
+            // Kunden zum Thread hinzufügen
             await thread.members.add(interaction.user.id);
 
+            // --- TRADER-ROLLE in den Thread einladen ---
+            if (process.env.TRADER_ROLE_ID) {
+                try {
+                    const allMembers = await interaction.guild.members.fetch();
+                    const traders = allMembers.filter(m => m.roles.cache.has(process.env.TRADER_ROLE_ID));
+                    for (const [, trader] of traders) {
+                        await thread.members.add(trader.id).catch(() => {});
+                    }
+                } catch (err) {
+                    console.log('Konnte Trader nicht hinzufügen:', err.message);
+                }
+            }
+
+            // Trade-Daten sammeln
             const tradeData = {
+                messageId: null,
                 claimedBy: null,
+                closed: false,
+                cancelled: false,
                 kundeId: interaction.user.id,
                 ingameName,
                 spawnerType,
@@ -364,31 +455,21 @@ if (interaction.customId === 'close') {
                 action
             };
 
+            // Container + Buttons bauen
             const container = buildTradeContainer(tradeData);
+            const actionRow = buildActionButtonRow(tradeData);
 
-const actionRow = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-        .setCustomId('claim')
-        .setLabel('Claim')
-        .setStyle(ButtonStyle.Primary)
-        .setEmoji('🙋‍♂️'),
-    new ButtonBuilder()
-        .setCustomId('close')
-        .setLabel('Schließen')
-        .setStyle(ButtonStyle.Danger)
-        .setEmoji('❌')
-);
+            // Nachricht senden (Container + Button-Row separat)
+            const tradeMsg = await thread.send({
+                components: [container, actionRow],
+                flags: MessageFlags.IsComponentsV2
+            });
 
-            
-
-const tradeMsg = await thread.send({
-    components: [container, actionRow],
-    flags: MessageFlags.IsComponentsV2
-});
-
+            // Trade-Daten speichern
             tradeData.messageId = tradeMsg.id;
             trades[thread.id] = tradeData;
 
+            // User bestätigen
             await interaction.editReply({
                 components: [
                     new ContainerBuilder()
