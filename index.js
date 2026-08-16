@@ -197,8 +197,8 @@ client.on('interactionCreate', async (interaction) => {
 
             // Preis-Tabelle (in Millionen)
             const prices = {
-                skeleton: { ankauf: 10.0, verkauf: 8.0 },
-                creeper:  { ankauf: 10.0, verkauf: 9.0 }
+                Skeleton: { ankauf: 10.0, verkauf: 8.0 },
+                Creeper:  { ankauf: 10.0, verkauf: 9.0 }
             };
 
             const pricePerUnit = prices[spawnerType][tradeType];
