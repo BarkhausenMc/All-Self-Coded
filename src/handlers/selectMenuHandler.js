@@ -3,13 +3,15 @@ const {
     ModalBuilder,
     TextInputBuilder,
     TextInputStyle,
-    MessageFlags
+    MessageFlags,
+    ContainerBuilder,
+    TextDisplayBuilder
 } = require('discord.js');
 const constants = require('../config/constants');
 
 module.exports = async function handleSelectMenu(interaction) {
     if (interaction.customId.startsWith('select_spawner:')) {
-        const tradeType = interaction.customId.split(':')[1]; // "ankauf" oder "verkauf"
+        const tradeType = interaction.customId.split(':')[1];
         const spawnerType = interaction.values[0];
 
         const priceInfo = constants.prices[spawnerType];
@@ -17,23 +19,32 @@ module.exports = async function handleSelectMenu(interaction) {
 
         if (isStopped) {
             const actionLabel = tradeType === 'ankauf' ? 'ANKAUF' : 'VERKAUF';
-            
-            // ⭐ OHNE IsComponentsV2 und OHNE components!
+
+            // ⭐ ContainerBuilder statt content nutzen!
+            const errorContainer = new ContainerBuilder()
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(
+                        `## ❌ • ${spawnerType} ${actionLabel} derzeit nicht verfügbar\n\n` +
+                        `Der **${spawnerType}** ${actionLabel.toLowerCase()} ist aktuell **gestoppt**.\n` +
+                        `Bitte prüfe später wieder oder wähle einen anderen Spawner.\n\n` +
+                        `📌 *Dieser Status wird vom Admin verwaltet.*`
+                    )
+                );
+
             await interaction.update({
-                content: `## ❌ • ${spawnerType} ${actionLabel} derzeit nicht verfügbar\n\n` +
-                    `Der **${spawnerType}** ${actionLabel.toLowerCase()} ist aktuell **gestoppt**.\n` +
-                    `Bitte prüfe später wieder oder wähle einen anderen Spawner.\n\n` +
-                    `📌 *Dieser Status wird vom Admin verwaltet.*`
-                // KEINE flags: MessageFlags.IsComponentsV2
-                // KEINE components
+                components: [errorContainer],
+                flags: MessageFlags.IsComponentsV2
             });
             return;
         }
 
         const price = priceInfo[tradeType];
+        const actionWord = tradeType === 'ankauf' ? 'Ankauf' : 'Verkauf';
+        const emoji = tradeType === 'ankauf' ? '🛒' : '💰';
+
         const modal = new ModalBuilder()
             .setCustomId(`trade_modal:${tradeType}:${spawnerType}`)
-            .setTitle(`${tradeType === 'ankauf' ? '🛒' : '💰'} ${spawnerType} ${actionLabel === 'ANKAUF' ? 'Ankauf' : 'Verkauf'}`);
+            .setTitle(`${emoji} ${spawnerType} ${actionWord}`);
 
         const ingameNameInput = new TextInputBuilder()
             .setCustomId('ingame_name')
