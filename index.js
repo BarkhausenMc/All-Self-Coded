@@ -12,7 +12,7 @@ const {
 require('dotenv').config();
 
 // Eigene Module importieren
-const { constants } = require('./src/config/constants');
+const constants = require('./src/config/constants');
 const handleButton = require('./src/handlers/buttonHandler');
 const handleSelectMenu = require('./src/handlers/selectMenuHandler');
 const handleModal = require('./src/handlers/modalHandler');

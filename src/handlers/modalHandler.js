@@ -8,7 +8,7 @@ const {
     ChannelType
 } = require('discord.js');
 
-const { constants } = require('../config/constants');
+const constants = require('../config/constants');
 const { tradeCounters, trades } = require('../data/store');
 const buildTradeContainer = require('../utils/buildTradeContainer');
 const buildActionButtonRow = require('../utils/buildActionButtonRow');
