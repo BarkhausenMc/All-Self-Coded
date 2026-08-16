@@ -25,7 +25,7 @@ client.once('ready', async () => {
 
     if (channel) {
         const container = new ContainerBuilder()
-            .setAccentColor(0x1a1a1a)
+            
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent('## 🛒 • SPAWNER TRADING • 💰\n*Yayks Spawner Tarding*')
             )
