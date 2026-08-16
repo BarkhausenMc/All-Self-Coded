@@ -4,9 +4,9 @@ module.exports = function buildTradeContainer(data) {
     // Status-Text dynamisch bestimmen je nach Trade-Zustand
     let statusText;
     if (data.cancelled) {
-        statusText = `❌ **Trade abgebrochen!**\n\nDieser Thread wurde abgebrochen.`;
+        statusText = `❌ **Trade abgebrochen!**`;
     } else if (data.closed) {
-        statusText = `✅ **Trade abgeschlossen!**\n\nDieser Thread wurde geschlossen.`;
+        statusText = `✅ **Trade abgeschlossen!**`;
     } else if (data.claimedBy) {
         statusText = `🔒 Das Ticket wurde von <@${data.claimedBy}> geclaimt.`;
     } else {
