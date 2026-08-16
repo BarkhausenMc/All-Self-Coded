@@ -92,16 +92,40 @@ module.exports = async function handleModal(interaction) {
             flags: MessageFlags.IsComponentsV2
         });
 
-        // === TRADER PING ===
-        if (constants.TRADER_ROLE_ID) {
-            await thread.send({
-                content: `<@&${constants.TRADER_ROLE_ID}> — Neuer Trade! 📢`
-            });
-        }
 
-        tradeData.messageId = tradeMsg.id;
-        store.trades[thread.id] = tradeData;
-        store.save();
+tradeData.messageId = tradeMsg.id;
+store.trades[thread.id] = tradeData;
+store.save();
+
+// === TRADE IN LOG POSTEN ===
+if (constants.LOG_CHANNEL_ID) {
+    try {
+        const logContainer = new ContainerBuilder()
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(
+                    `## ${tradeData.emoji} • Neuer Handel #${tradeData.handNummer}\n\n` +
+                    `**Status:** ⏳ Offen\n` +
+                    `**Zeit:** <t:${Math.floor(Date.now() / 1000)}:R>\n\n` +
+                    `**👤 Kunde:** <@${tradeData.kundeId}>\n` +
+                    `**🎮 ING:** \`${tradeData.ingameName}\`\n\n` +
+                    `**${tradeData.spawnerEmoji} Spawner:** ${tradeData.spawnerType}\n` +
+                    `**📦 Menge:** ${tradeData.amount}\n` +
+                    `**💵 Preis/Stk:** ${tradeData.pricePerUnit.toFixed(1)}M\n` +
+                    `**💰 Gesamtpreis:** ${tradeData.totalPrice.toFixed(1)}M`
+                )
+            );
+
+        const logChannel = interaction.guild.channels.cache.get(constants.LOG_CHANNEL_ID);
+        await logChannel.send({ components: [logContainer], flags: MessageFlags.IsComponentsV2 });
+    } catch (err) {
+        console.log('Fehler beim Loggen des Trades:', err.message);
+    }
+}
+
+// === TRADER PING ===
+if (constants.TRADER_ROLE_ID) {
+    await thread.send({ content: `<@&${constants.TRADER_ROLE_ID}> — Neuer Trade! 📢` });
+}
 
         await interaction.editReply({
             components: [

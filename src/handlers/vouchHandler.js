@@ -14,6 +14,7 @@ const constants = require('../config/constants');
 const updateTradeMessage = require('../utils/updateTradeMessage');
 const buildTradeContainer = require('../utils/buildTradeContainer');
 
+
 // ==========================================
 // TEIL 1: Stern-Auswahl → Modal öffnen
 // ==========================================
@@ -158,44 +159,43 @@ async function handleVouchModal(interaction) {
             });
         }
 
+         // Trade abschließen
         trade.awaitingVouch = false;
         trade.closed = true;
         store.save();
 
+        // Original-Nachricht aktualisieren
         try {
             const container = buildTradeContainer(trade);
             const msg = await interaction.channel.messages.fetch(trade.messageId);
             await msg.edit({ components: [container], flags: MessageFlags.IsComponentsV2 });
         } catch (err) {
-            // Ignorieren falls Thread schon weg
+            // Ignorieren
         }
 
-        await interaction.channel.send({
-            content: `⏳ Dieses Ticket wird in **5 Sekunden** geschlossen...`,
-        });
+        // 5 Sek Countdown
+        await interaction.channel.send({ content: `⏳ Dieses Ticket wird in **5 Sekunden** gelöscht...` });
 
-        await interaction.reply({
-            content: `✅ Beide haben bewertet! Trade abgeschlossen und im Vouch-Channel gepostet.`,
-            flags: MessageFlags.Ephemeral
-        });
+        await interaction.reply({ content: `✅ Beide haben bewertet! Trade abgeschlossen und im Vouch-Channel gepostet.`, flags: MessageFlags.Ephemeral });
 
+        // === AFTER 5 SECONDS: DELETE + LOG ===
         setTimeout(async () => {
             try {
-                await interaction.channel.setLocked(true);
-                await interaction.channel.setArchived(true);
+                // Erst loggen
+                await logTrade(interaction, trade, '✅ ABGESCHLOSSEN');
+                
+                // Thread löschen
+                await interaction.channel.delete();
+                
+                // Aus Speicher
+                delete store.trades[interaction.channelId];
+                store.save();
             } catch (err) {
-                // Ignorieren
+                console.log('Fehler beim Löschen/Loggen:', err.message);
             }
         }, 5000);
 
         delete store.trades[interaction.channelId];
         store.save();
-    } else {
-        await interaction.reply({
-            content: `✅ Danke für deine Bewertung! (${trade.vouches.length}/2)\nWarte noch auf den anderen Trade-Partner.`,
-            flags: MessageFlags.Ephemeral
-        });
-    }
-}
-
+}};
 module.exports = { handleVouchSelect, handleVouchModal };

@@ -22,6 +22,34 @@ async function closeThreadAfterDelay(channel, delaySeconds) {
     }, delaySeconds * 1000);
 }
 
+// Hilfsfunktion: Trade loggen
+async function logTrade(interaction, trade, status) {
+    const logChannel = interaction.guild.channels.cache.get(constants.LOG_CHANNEL_ID);
+    
+    if (!logChannel) return;
+
+    const logContainer = new ContainerBuilder()
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+                `## ${trade.emoji} • Handel #${trade.handNummer}\n\n` +
+                `**Status:** ${status}\n` +
+                `**Zeit:** <t:${Math.floor(Date.now() / 1000)}:R>\n\n` +
+                `**👤 Kunde:** <@${trade.kundeId}>\n` +
+                `**🎮 ING:** \`${trade.ingameName}\`\n` +
+                `**🤝 Trader:** ${trade.claimedBy ? `<@${trade.claimedBy}>` : 'Nicht geclaimt'}\n\n` +
+                `**${trade.spawnerEmoji} Spawner:** ${trade.spawnerType}\n` +
+                `**📦 Menge:** ${trade.amount}\n` +
+                `**💵 Preis/Stk:** ${trade.pricePerUnit.toFixed(1)}M\n` +
+                `**💰 Gesamtpreis:** ${trade.totalPrice.toFixed(1)}M`
+            )
+        );
+
+    await logChannel.send({
+        components: [logContainer],
+        flags: MessageFlags.IsComponentsV2
+    });
+}
+
 module.exports = async function handleButton(interaction) {
 
     // === CLAIM BUTTON ===
@@ -63,102 +91,95 @@ if (interaction.customId === 'claim') {
 }
 
     // === CLOSE BUTTON → Vouch-Phase ===
-    if (interaction.customId === 'close') {
-        const trade = store.trades[interaction.channelId];
+if (interaction.customId === 'close') {
+    const trade = store.trades[interaction.channelId];
 
-        if (!trade || !trade.claimedBy) {
-            await interaction.reply({
-                content: '❌ Der Trade muss erst geclaimt werden.',
-                flags: MessageFlags.Ephemeral
-            });
-            return;
-        }
+    if (!trade || !trade.claimedBy) {
+        await interaction.reply({ content: '❌ Der Trade muss erst geclaimt werden.', flags: MessageFlags.Ephemeral });
+        return;
+    }
 
-        if (interaction.user.id !== trade.claimedBy) {
-            await interaction.reply({
-                content: `❌ Nur <@${trade.claimedBy}> darf diesen Trade abschließen.`,
-                flags: MessageFlags.Ephemeral
-            });
-            return;
-        }
+    if (interaction.user.id !== trade.claimedBy) {
+        await interaction.reply({ content: `❌ Nur <@${trade.claimedBy}> darf diesen Trade abschließen.`, flags: MessageFlags.Ephemeral });
+        return;
+    }
 
-        trade.awaitingVouch = true;
-        trade.vouches = [];
-        trade.vouchEntries = [];
-        store.save();
+    trade.awaitingVouch = true;
+    trade.vouches = [];
+    trade.vouchEntries = [];
+    store.save();
 
-        await updateTradeMessage(interaction.channel, trade);
+    await updateTradeMessage(interaction.channel, trade);
 
-        const starSelect = new StringSelectMenuBuilder()
-            .setCustomId('vouch_stars')
-            .setPlaceholder('⭐ Bewerte deinen Trade-Partner (1-5 Sterne)')
-            .addOptions([
-                { label: '⭐ 1 Stern', description: 'Sehr schlechte Erfahrung', value: '1', emoji: '⭐' },
-                { label: '⭐⭐ 2 Sterne', description: 'Schlechte Erfahrung', value: '2', emoji: '⭐' },
-                { label: '⭐⭐⭐ 3 Sterne', description: 'Okay', value: '3', emoji: '⭐' },
-                { label: '⭐⭐⭐⭐ 4 Sterne', description: 'Gute Erfahrung', value: '4', emoji: '⭐' },
-                { label: '⭐⭐⭐⭐⭐ 5 Sterne', description: 'Sehr gute Erfahrung', value: '5', emoji: '⭐' }
-            ]);
+    const starSelect = new StringSelectMenuBuilder()
+        .setCustomId('vouch_stars')
+        .setPlaceholder('⭐ Bewerte deinen Trade-Partner (1-5 Sterne)')
+        .addOptions([
+            { label: '⭐ 1 Stern', description: 'Sehr schlechte Erfahrung', value: '1', emoji: '⭐' },
+            { label: '⭐⭐ 2 Sterne', description: 'Schlechte Erfahrung', value: '2', emoji: '⭐' },
+            { label: '⭐⭐⭐ 3 Sterne', description: 'Okay', value: '3', emoji: '⭐' },
+            { label: '⭐⭐⭐⭐ 4 Sterne', description: 'Gute Erfahrung', value: '4', emoji: '⭐' },
+            { label: '⭐⭐⭐⭐⭐ 5 Sterne', description: 'Sehr gute Erfahrung', value: '5', emoji: '⭐' }
+        ]);
 
-        const vouchRow = new ActionRowBuilder().addComponents(starSelect);
+    const vouchRow = new ActionRowBuilder().addComponents(starSelect);
 
-        const vouchContainer = new ContainerBuilder()
-            .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(
-                    `## 📝 • Trade Bewertung\n\n` +
-                    `Bitte bewertet euch gegenseitig!\n` +
-                    `Wähle unten deine Sterne-Bewertung aus.\n` +
-                    `Danach kannst du noch einen Text schreiben.\n\n` +
-                    `**Kunde:** <@${trade.kundeId}>\n` +
-                    `**Trader:** <@${trade.claimedBy}>`
-                )
+    const vouchContainer = new ContainerBuilder()
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+                `## 📝 • Trade Bewertung\n\n` +
+                `Bitte bewertet euch gegenseitig!\n` +
+                `Wähle unten deine Sterne-Bewertung aus.\n` +
+                `Danach kannst du noch einen Text schreiben.\n\n` +
+                `**Kunde:** <@${trade.kundeId}>\n` +
+                `**Trader:** <@${trade.claimedBy}>`
             )
-            .addActionRowComponents(vouchRow);
+        )
+        .addActionRowComponents(vouchRow);
 
-        await interaction.channel.send({
-            components: [vouchContainer],
-            flags: MessageFlags.IsComponentsV2
-        });
+    await interaction.channel.send({ components: [vouchContainer], flags: MessageFlags.IsComponentsV2 });
 
-        await interaction.reply({
-            content: `✅ Trade wird abgeschlossen — bitte bewertet euch gegenseitig!`,
-            flags: MessageFlags.Ephemeral
-        });
+    await interaction.reply({ content: `✅ Trade wird abgeschlossen — bitte bewertet euch gegenseitig!`, flags: MessageFlags.Ephemeral });
+    return;
+}
+
+// === ABBRUCH BUTTON → DELETED + LOGGED ===
+if (interaction.customId === 'abbruch') {
+    const trade = store.trades[interaction.channelId];
+
+    if (!trade) {
+        await interaction.reply({ content: '❌ Trade nicht gefunden.', flags: MessageFlags.Ephemeral });
         return;
     }
 
-    // === ABBRUCH BUTTON ===
-    if (interaction.customId === 'abbruch') {
-        const trade = store.trades[interaction.channelId];
+    trade.cancelled = true;
+    store.save();
 
-        if (!trade) {
-            await interaction.reply({
-                content: '❌ Trade nicht gefunden.',
-                flags: MessageFlags.Ephemeral
-            });
-            return;
+    await updateTradeMessage(interaction.channel, trade);
+
+    await interaction.channel.send({ content: `⏳ Dieses Ticket wird in **5 Sekunden** gelöscht...` });
+
+    await interaction.reply({ content: `❌ Trade wurde abgebrochen. Ticket wird gelöscht.`, flags: MessageFlags.Ephemeral });
+
+    // Nach 5 Sekunden DELETE (nicht Archive!) + LOGGEN
+    setTimeout(async () => {
+        try {
+            // Zuerst loggen
+            await logTrade(interaction, trade, '❌ ABGEBROCHEN');
+            
+            // Thread löschen
+            await interaction.channel.delete();
+            
+            // Aus Speicher entfernen
+            delete store.trades[interaction.channelId];
+            store.save();
+        } catch (err) {
+            console.log('Fehler beim Löschen/Loggen:', err.message);
         }
+    }, 5000);
 
-        trade.cancelled = true;
-        store.save();
-
-        await updateTradeMessage(interaction.channel, trade);
-
-        await interaction.channel.send({
-            content: `⏳ Dieses Ticket wird in **5 Sekunden** geschlossen...`,
-        });
-
-        await interaction.reply({
-            content: `❌ Trade wurde abgebrochen. Ticket schließt in 5 Sekunden.`,
-            flags: MessageFlags.Ephemeral
-        });
-
-        closeThreadAfterDelay(interaction.channel, 5);
-
-        delete store.trades[interaction.channelId];
-        store.save();
-        return;
-    }
+    return;
+}
 
 // === SPAWNER TRADING BUTTONS (DYNAMISCHE OPTIONEN) ===
 if (interaction.customId === 'spawner_ankaufen') {
