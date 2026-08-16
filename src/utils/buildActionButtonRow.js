@@ -15,7 +15,7 @@ module.exports = function buildActionButtonRow(data) {
             new ButtonBuilder()
                 .setCustomId('abbruch')
                 .setLabel('Abbrechen')
-                .setStyle(ButtonStyle.Secondarys)
+                .setStyle(ButtonStyle.Secondary)
                 .setEmoji('🗑️')
         );
     } else {
