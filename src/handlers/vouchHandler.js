@@ -14,10 +14,34 @@ const constants = require('../config/constants');
 const updateTradeMessage = require('../utils/updateTradeMessage');
 const buildTradeContainer = require('../utils/buildTradeContainer');
 
+// === TRADE LOGGING ===
+async function logTrade(interaction, trade, status) {
+    const logChannel = interaction.guild.channels.cache.get(constants.LOG_CHANNEL_ID);
+    if (!logChannel) return;
 
-// ==========================================
-// TEIL 1: Stern-Auswahl → Modal öffnen
-// ==========================================
+    const logContainer = new ContainerBuilder()
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+                `## ${trade.emoji} • Handel #${trade.handNummer}\n\n` +
+                `**Status:** ${status}\n` +
+                `**Zeit:** <t:${Math.floor(Date.now() / 1000)}:R>\n\n` +
+                `**👤 Kunde:** <@${trade.kundeId}>\n` +
+                `**🎮 ING:** \`${trade.ingameName}\`\n` +
+                `**🤝 Trader:** ${trade.claimedBy ? `<@${trade.claimedBy}>` : 'Nicht geclaimt'}\n\n` +
+                `**${trade.spawnerEmoji} Spawner:** ${trade.spawnerType}\n` +
+                `**📦 Menge:** ${trade.amount}\n` +
+                `**💵 Preis/Stk:** ${trade.pricePerUnit.toFixed(1)}M\n` +
+                `**💰 Gesamtpreis:** ${trade.totalPrice.toFixed(1)}M`
+            )
+        );
+
+    await logChannel.send({
+        components: [logContainer],
+        flags: MessageFlags.IsComponentsV2
+    });
+}
+
+// === TEIL 1: STERN-AUSWAHL → MODAL ===
 async function handleVouchSelect(interaction) {
     if (interaction.customId !== 'vouch_stars') return;
 
@@ -68,9 +92,7 @@ async function handleVouchSelect(interaction) {
     await interaction.showModal(modal);
 }
 
-// ==========================================
-// TEIL 2: Modal Submit → Vouch speichern
-// ==========================================
+// === TEIL 2: MODAL SUBMIT → VOUCH SPEICHERN ===
 async function handleVouchModal(interaction) {
     if (!interaction.customId.startsWith('vouch_modal:')) return;
 
@@ -159,35 +181,31 @@ async function handleVouchModal(interaction) {
             });
         }
 
-         // Trade abschließen
         trade.awaitingVouch = false;
         trade.closed = true;
         store.save();
 
-        // Original-Nachricht aktualisieren
         try {
             const container = buildTradeContainer(trade);
             const msg = await interaction.channel.messages.fetch(trade.messageId);
             await msg.edit({ components: [container], flags: MessageFlags.IsComponentsV2 });
         } catch (err) {
-            // Ignorieren
+            // Ignore
         }
 
-        // 5 Sek Countdown
-        await interaction.channel.send({ content: `⏳ Dieses Ticket wird in **5 Sekunden** gelöscht...` });
+        await interaction.channel.send({
+            content: `⏳ Dieses Ticket wird in **5 Sekunden** gelöscht...`
+        });
 
-        await interaction.reply({ content: `✅ Beide haben bewertet! Trade abgeschlossen und im Vouch-Channel gepostet.`, flags: MessageFlags.Ephemeral });
+        await interaction.reply({
+            content: `✅ Beide haben bewertet! Trade abgeschlossen und im Vouch-Channel gepostet.`,
+            flags: MessageFlags.Ephemeral
+        });
 
-        // === AFTER 5 SECONDS: DELETE + LOG ===
         setTimeout(async () => {
             try {
-                // Erst loggen
                 await logTrade(interaction, trade, '✅ ABGESCHLOSSEN');
-                
-                // Thread löschen
                 await interaction.channel.delete();
-                
-                // Aus Speicher
                 delete store.trades[interaction.channelId];
                 store.save();
             } catch (err) {
@@ -197,5 +215,12 @@ async function handleVouchModal(interaction) {
 
         delete store.trades[interaction.channelId];
         store.save();
-}};
+    } else {
+        await interaction.reply({
+            content: `✅ Danke für deine Bewertung! (${trade.vouches.length}/2)\nWarte noch auf den anderen Trade-Partner.`,
+            flags: MessageFlags.Ephemeral
+        });
+    }
+}
+
 module.exports = { handleVouchSelect, handleVouchModal };

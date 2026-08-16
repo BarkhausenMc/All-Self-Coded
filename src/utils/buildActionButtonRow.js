@@ -1,10 +1,7 @@
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
 module.exports = function buildActionButtonRow(data) {
-    // Abgeschlossen oder abgebrochen → keine Buttons
     if (data.closed || data.cancelled) return null;
-
-    // Vouch-Phase → kein Close/Claim Button mehr
     if (data.awaitingVouch) return null;
 
     if (data.claimedBy) {

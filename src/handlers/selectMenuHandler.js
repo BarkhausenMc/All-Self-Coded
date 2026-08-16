@@ -14,7 +14,6 @@ module.exports = async function handleSelectMenu(interaction) {
         const tradeType = interaction.customId.split(':')[1];
         const spawnerType = interaction.values[0];
 
-        // === STOP-PRÜFUNG ===
         const price = constants.prices[spawnerType]?.[tradeType];
         if (price === 'Stop' || price === undefined) {
             await interaction.update({

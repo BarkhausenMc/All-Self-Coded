@@ -18,8 +18,9 @@ function loadData() {
         if (!data.tradeCounters) data.tradeCounters = {};
         if (!data.trades) data.trades = {};
         if (!data.vouches) data.vouches = [];
+        console.log('✅ Datenbank geladen:', Object.keys(data.trades).length, 'aktive Trades');
     } catch (err) {
-        console.error('Fehler beim Laden:', err);
+        console.error('❌ Fehler beim Laden:', err);
     }
 }
 
@@ -29,28 +30,12 @@ function saveData() {
         if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
         fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
     } catch (err) {
-        console.error('Fehler beim Speichern:', err);
+        console.error('❌ Fehler beim Speichern:', err);
     }
 }
 
 loadData();
 
-function loadData() {
-    try {
-        if (fs.existsSync(DATA_FILE)) {
-            const raw = fs.readFileSync(DATA_FILE, 'utf8');
-            data = JSON.parse(raw);
-        }
-        if (!data.tradeCounters) data.tradeCounters = {};
-        if (!data.trades) data.trades = {};
-        if (!data.vouches) data.vouches = [];
-        console.log('✅ Datenbank geladen:', Object.keys(data.trades).length, 'aktive Trades');
-    } catch (err) {
-        console.error('❌ Fehler beim Laden der Datenbank:', err);
-    }
-}
-
-// EXPORTE DIREKT (keine Getter!)
 module.exports = {
     tradeCounters: data.tradeCounters,
     trades: data.trades,

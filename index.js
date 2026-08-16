@@ -27,7 +27,6 @@ const client = new Client({
     ]
 });
 
-// Slash Commands definieren
 const commands = [
     new SlashCommandBuilder()
         .setName('setup')
@@ -38,13 +37,9 @@ const commands = [
         )
 ].map(cmd => cmd.toJSON());
 
-// ==========================================
-// READY EVENT — Slash Commands registrieren
-// ==========================================
 client.once('ready', async () => {
     console.log('Bot ist online!');
 
-    // Slash Commands global registrieren
     try {
         const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
         await rest.put(
@@ -57,12 +52,8 @@ client.once('ready', async () => {
     }
 });
 
-// ==========================================
-// INTERACTION CREATE
-// ==========================================
 client.on('interactionCreate', async (interaction) => {
     try {
-        // Slash Command
         if (interaction.isChatInputCommand()) {
             if (interaction.commandName === 'setup') {
                 if (interaction.options.getSubcommand() === 'spawner') {
@@ -71,28 +62,27 @@ client.on('interactionCreate', async (interaction) => {
                         return;
                     }
 
-                        const priceLines = Object.entries(constants.prices).map(([name, prices]) => {
-                            const ankauf = prices.ankauf === 'Stop' ? 'GESPERRT' : `${prices.ankauf.toFixed(1)}M`;
-                            const verkauf = prices.verkauf === 'Stop' ? 'GESPERRT' : `${prices.verkauf.toFixed(1)}M`;
-                            const emoji = constants.spawnerEmojis[name] || '📦';
-                            return `${emoji} ${name.padEnd(12)} ${ankauf.padStart(10)}  ${verkauf.padStart(10)}`;
-                        }).join('\n');
+                    const priceLines = Object.entries(constants.prices).map(([name, prices]) => {
+                        const ankauf = prices.ankauf === 'Stop' ? 'GESPERRT' : `${prices.ankauf.toFixed(1)}M`;
+                        const verkauf = prices.verkauf === 'Stop' ? 'GESPERRT' : `${prices.verkauf.toFixed(1)}M`;
+                        const emoji = constants.spawnerEmojis[name] || '📦';
+                        return `${emoji} ${name.padEnd(12)} ${ankauf.padStart(10)}  ${verkauf.padStart(10)}`;
+                    }).join('\n');
 
-                        const container = new ContainerBuilder()
-                            .addTextDisplayComponents(
-                                new TextDisplayBuilder().setContent('## 🛒 • SPAWNER TRADING • 💰\n*Yayks Spawner Trading*')
+                    const container = new ContainerBuilder()
+                        .addTextDisplayComponents(
+                            new TextDisplayBuilder().setContent('## 🛒 • SPAWNER TRADING • 💰\n*Yayks Spawner Trading*')
+                        )
+                        .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
+                        .addTextDisplayComponents(
+                            new TextDisplayBuilder().setContent(
+                                '```\n' +
+                                'SPAWNER      🛒ANKAUF    💰VERKAUF\n' +
+                                '────────────────────────────────────\n' +
+                                priceLines + '\n' +
+                                '```'
                             )
-                            .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
-                            .addTextDisplayComponents(
-                                new TextDisplayBuilder().setContent(
-                                    '```\n' +
-                                    'SPAWNER      🛒ANKAUF    💰VERKAUF\n' +
-                                    '────────────────────────────────────\n' +
-                                    priceLines + '\n' +
-                                    '```'
-                                )
-                            )
-
+                        )
                         .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
                         .addTextDisplayComponents(
                             new TextDisplayBuilder().setContent('💰 **VERKAUFEN** — Du **verkaufst** uns deine Spawner')
@@ -129,24 +119,15 @@ client.on('interactionCreate', async (interaction) => {
             }
         }
 
-        // Vouch Select Menu
         if (interaction.isStringSelectMenu() && interaction.customId === 'vouch_stars') {
             await handleVouchSelect(interaction);
-        }
-        // Vouch Modal
-        else if (interaction.isModalSubmit() && interaction.customId.startsWith('vouch_modal:')) {
+        } else if (interaction.isModalSubmit() && interaction.customId.startsWith('vouch_modal:')) {
             await handleVouchModal(interaction);
-        }
-        // Buttons
-        else if (interaction.isButton()) {
+        } else if (interaction.isButton()) {
             await handleButton(interaction);
-        }
-        // Normales Select Menu
-        else if (interaction.isStringSelectMenu()) {
+        } else if (interaction.isStringSelectMenu()) {
             await handleSelectMenu(interaction);
-        }
-        // Normales Modal
-        else if (interaction.isModalSubmit()) {
+        } else if (interaction.isModalSubmit()) {
             await handleModal(interaction);
         }
     } catch (error) {
