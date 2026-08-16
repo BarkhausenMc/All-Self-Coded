@@ -215,9 +215,9 @@ client.on('interactionCreate', async (interaction) => {
                 )
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(
-                        `**Kunde:** <@${interaction.user.id}>\n` +
-                        `**👤 ING:** \`${ingameName}\`\n\n` +
-                        `**Spawner-Typ:** ${spawnerType}\n` +
+                        `**👤Kunde:** <@${interaction.user.id}>\n` +
+                        `**👤ING:** \`${ingameName}\`\n\n` +
+                        `**${emoji}Spawner-Typ:** ${spawnerType}\n` +
                         `**📦 Menge:** ${amount}\n\n` +
                         `**💵 Preis/Stk:** ${pricePerUnit.toFixed(1)}M\n` +
                         `**💰 Gesamtpreis:** ${totalPrice.toFixed(1)}M`
