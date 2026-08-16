@@ -21,6 +21,7 @@ const client = new Client({
         GatewayIntentBits.Guilds
     ]
 });
+const tradeCounters = {};
 
 client.once('ready', async () => {
     console.log('Bot ist online!');
@@ -184,6 +185,9 @@ client.on('interactionCreate', async (interaction) => {
 
             await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
+            tradeCounters[interaction.user.id] = (tradeCounters[interaction.user.id] || 0) + 1;
+            const handNummer = tradeCounters[interaction.user.id];
+
             const emoji = tradeType === 'ankauf' ? '🛒' : '💰';
             const action = tradeType === 'ankauf' ? 'Ankauf' : 'Verkauf';
 
@@ -204,40 +208,53 @@ client.on('interactionCreate', async (interaction) => {
               Skeleton: '💀',
               Creeper: '💥'
             };
+            
 
 const spawnerEmoji = spawnerEmojis[spawnerType] || '❌';
             const pricePerUnit = prices[spawnerType][tradeType];
             const totalPrice = pricePerUnit * parseInt(amount);
 
-            const container = new ContainerBuilder()
-                .addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent(
-                        `## ${emoji} • Spawner ${action}\n\n`
-                    )
-                )
-                .addSeparatorComponents(
-                    new SeparatorBuilder().setDivider(true).setSpacing(1)
-                )
-                .addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent(
-                        `**👤Kunde:** <@${interaction.user.id}>\n` +
-                        `**🎮ING:** \`${ingameName}\`\n\n` 
-                    )
-                )
-                .addSeparatorComponents(
-                new SeparatorBuilder().setDivider(true).setSpacing(1)
-                )
-                .addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent(
-                        `**${spawnerEmoji} Spawner:**${spawnerType}\n\n` +
-                        `**📦 Menge:** ${amount}\n` +
-                        `**💵 Preis/Stk:** ${pricePerUnit.toFixed(1)}M\n` +
-                        `**💰 Gesamtpreis:** ${totalPrice.toFixed(1)}M`                        
-                    )
-                )
-                .addSeparatorComponents(
-                new SeparatorBuilder().setDivider(true).setSpacing(1)
-                );
+const container = new ContainerBuilder()
+    .addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(
+            `## ${emoji} • Spawner ${action}\n\n` +
+            `**🤝 • Handel #${handNummer}**`   // ← Handlungszahl im Header
+        )
+    )
+    .addSeparatorComponents(
+        new SeparatorBuilder().setDivider(true).setSpacing(1)
+    )
+    .addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(
+            `**👤 Kunde:** <@${interaction.user.id}>\n` +
+            `**🎮 ING:** \`${ingameName}\`\n` +
+            `**${spawnerEmoji} Spawner:** ${spawnerType}\n`
+        )
+    )
+    .addSeparatorComponents(
+        new SeparatorBuilder().setDivider(true).setSpacing(1)
+    )
+    .addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(
+            `**📦 Menge:** ${amount}\n` +
+            `**💵 Preis/Stk:** ${pricePerUnit.toFixed(1)}M\n` +
+            `**💰 Gesamtpreis:** ${totalPrice.toFixed(1)}M`
+        )
+    )
+    .addSeparatorComponents(
+        new SeparatorBuilder().setDivider(true).setSpacing(1)
+    )
+    .addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(
+            `## ℹ • Nächste Schritte\n\n` +
+            `Dieser Trade wurde angemeldet und steht nun in <#${thread.id}>.\n\n` +
+            `**Was passiert jetzt?**\n` +
+            `• Ein Staff-Mitglied wird den Trade prüfen\n` +
+            `• Du erhältst eine Benachrichtigung im Thread\n` +
+            `• Bitte bleib online für Rückfragen\n\n` +
+            `Danke für dein Vertrauen! 🙏`   // ← Claim-Text / Info
+        )
+    );
 
             await thread.send({
                 components: [container],
