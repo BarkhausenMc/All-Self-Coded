@@ -312,7 +312,7 @@ const container = new ContainerBuilder()
     )
     .addTextDisplayComponents(
         new TextDisplayBuilder().setContent(
-         //hier text ob ticket geclaimt oder nicht   
+            `🔓 Das Ticket wurde noch nicht geclaimt!`
         )
     );
 
