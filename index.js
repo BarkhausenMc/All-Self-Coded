@@ -37,9 +37,8 @@ client.once('ready', async () => {
                     '```\n' +
                     'SPAWNER      🛒ANKAUF    💰VERKAUF\n' +
                     '────────────────────────────────────\n' +
-                    '💀 Skeleton   │   10.0M    │   8.0M\n' +
-                    '💥 Creeper    │   10.0M    │    9.0M\n' +
-                    '🤖 Iron Golem │   10.0M    │    7.0M\n' +
+                    '💀 Skeleton      10.0M        8.0M\n' +
+                    '💥 Creeper       10.0M        9.0M\n' +
                     '```'
                 )
             )
@@ -78,6 +77,96 @@ client.once('ready', async () => {
         });
     } else {
         console.log('Channel nicht gefunden!');
+    }
+});
+
+client.on('interactionCreat', async (interaction) => {
+    if (!interaction.isButton()) return;
+
+    switch (interaction.setCustomId) {
+        case 'spawner_ankaufen':
+            await interaction.deferReply({ ephemeral: true});
+            
+            const selectMenu = new StringSelectMenuBuilder()
+                .setCustomId('spawner_ankauf_select')
+                .setLabel('Wähle einen Spawner')
+                .setPlaceholder('Spawner wählen...')
+                .addOptions([
+                        {
+                        label: '💀 Skeleton Spawner',
+                        description: 'Ankaufpreis: 10.0M | Verkaufspreis: 8.0M',
+                        value: 'skeleton_spawner',
+                        emoji: '💀'
+                    },
+                    {
+                        label: '💥 Creeper Spawner',
+                        description: 'Ankaufpreis: 10.0M | Verkaufspreis: 9.0M',
+                        value: 'creeper_spawner',
+                        emoji: '💥'
+                    }
+                ]);
+            const row = new ActionRowBuilder().addComponents(selectMenu);
+
+            await interaction.editReply({
+                content: '**🛒 Ankauf - Bitte wähle deinen Spawner:**',
+                components: [row] 
+            });
+            break;
+                case 'spawner_verkaufen':
+            await interaction.deferReply({ ephemeral: true });
+
+            const selectMenuSell = new StringSelectMenuBuilder()
+                .setCustomId('spawner_verkauf_select')
+                .setLabel('Wähle einen Spawner zum Verkauf')
+                .setPlaceholder('Spawner auswählen...')
+                .addOptions([
+                    {
+                        label: '💀 Skeleton Spawner',
+                        description: 'Du bekommst: 8.0M',
+                        value: 'sell_skeleton',
+                        emoji: '💀'
+                    },
+                    {
+                        label: '💥 Creeper Spawner',
+                        description: 'Du bekommst: 9.0M',
+                        value: 'sell_creeper',
+                        emoji: '💥'
+                    },
+                    {
+                        label: '🕸️ Spider Spawner',
+                        description: 'Du bekommst: 8.5M',
+                        value: 'sell_spider',
+                        emoji: '🕸️'
+                    }
+                ]);
+
+            const sellRow = new ActionRowBuilder().addComponents(selectMenuSell);
+
+            await interaction.editReply({
+                content: '**💰 Verkauf - Wähle deinen Spawner:**',
+                components: [sellRow]
+            });
+            break;
+    
+    }
+        if (interaction.isStringSelectMenu()) {
+        if (interaction.customId === 'spawner_ankeuf_select') {
+            const selectedSpawner = interaction.values[0];
+            
+            await interaction.reply({
+                content: `✅ **${selectedSpawner}** ausgewählt! Worauf wartest du?`,
+                ephemeral: true
+            });
+        }
+
+        if (interaction.customId === 'spawner_verkauf_select') {
+            const selectedSpawner = interaction.values[0];
+            
+            await interaction.reply({
+                content: `✅ Verkauf von **${selectedSpawner}** gestartet!`,
+                ephemeral: true
+            });
+        }
     }
 });
 
