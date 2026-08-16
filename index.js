@@ -159,34 +159,34 @@ client.on('interactionCreate', async (interaction) => {
     }
 
     if (interaction.isStringSelectMenu()) {
-        if (interaction.customId === 'spawner_ankauf_select') {
-            const selected = interaction.values[0];
+    if (interaction.customId === 'spawner_ankauf_select') {
+        const selected = interaction.values[0];
 
-            await interaction.update({
-                components: [],
-                flags: MessageFlags.IsComponentsV2
-            });
+        const container = new ContainerBuilder()
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(`✅ Du hast **${selected}** zum Kauf ausgewählt!\nMöchtest du den Trade abschließen?`)
+            );
 
-            await interaction.followUp({
-                content: `✅ Du hast **${selected}** zum Kauf ausgewählt!`,
-                flags: MessageFlags.Ephemeral
-            });
-        }
-
-        if (interaction.customId === 'spawner_verkauf_select') {
-            const selected = interaction.values[0];
-
-            await interaction.update({
-                components: [],
-                flags: MessageFlags.IsComponentsV2
-            });
-
-            await interaction.followUp({
-                content: `✅ Du hast **${selected}** zum Verkauf ausgewählt!`,
-                flags: MessageFlags.Ephemeral
-            });
-        }
+        await interaction.update({
+            components: [container],
+            flags: MessageFlags.IsComponentsV2
+        });
     }
+
+    if (interaction.customId === 'spawner_verkauf_select') {
+        const selected = interaction.values[0];
+
+        const container = new ContainerBuilder()
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(`✅ Du hast **${selected}** zum Verkauf ausgewählt!\nMöchtest du den Trade abschließen?`)
+            );
+
+        await interaction.update({
+            components: [container],
+            flags: MessageFlags.IsComponentsV2
+        });
+    }
+}
 });
 
 client.login(process.env.DISCORD_TOKEN);
