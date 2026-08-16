@@ -223,7 +223,7 @@ if (interaction.customId === 'spawner_ankaufen') {
     const ankaufOptions = Object.entries(constants.prices).map(([name, prices]) => {
         const isStopped = prices.ankauf === 'Stop' || prices.ankauf === undefined;
         return {
-            label: `${'📦'} ${name} Spawner`,
+            label: `${name} Spawner`,
             description: isStopped 
                 ? '⚠️ Ankauf derzeit GESPERRT' 
                 : `Preis: ${prices.ankauf.toFixed(1)}M`,
