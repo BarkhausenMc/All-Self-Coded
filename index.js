@@ -88,68 +88,64 @@ client.on('interactionCreate', async (interaction) => {
 
     // --- BUTTON HANDLER ---
     if (interaction.isButton()) {
-        switch (interaction.customId) {
-            case 'spawner_ankaufen': {
-                await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    switch (interaction.customId) {
+        case 'spawner_ankaufen': {
+            const modal = new ModalBuilder()
+                .setCustomId('trade_modal:ankauf')
+                .setTitle('🛒 Spawner Ankauf');
 
-                const modal = new ModalBuilder()
-                    .setCustomId('trade_modal:ankauf')  // 'ankauf' in der ID speichern
-                    .setTitle('🛒 Spawner Ankauf');
+            const ingameNameInput = new TextInputBuilder()
+                .setCustomId('ingame_name')
+                .setLabel('Wie lautet dein Ingame-Name?')
+                .setStyle(TextInputStyle.Short)
+                .setPlaceholder('z.B. Steve')
+                .setRequired(true);
 
-                const ingameNameInput = new TextInputBuilder()
-                    .setCustomId('ingame_name')
-                    .setLabel('Wie lautet dein Ingame-Name?')
-                    .setStyle(TextInputStyle.Short)
-                    .setPlaceholder('z.B. Steve')
-                    .setRequired(true);
+            const amountInput = new TextInputBuilder()
+                .setCustomId('amount')
+                .setLabel('Wie viele Spawner möchtest du kaufen?')
+                .setStyle(TextInputStyle.Short)
+                .setPlaceholder('z.B. 3')
+                .setRequired(true);
 
-                const amountInput = new TextInputBuilder()
-                    .setCustomId('amount')
-                    .setLabel('Wie viele Spawner möchtest du kaufen?')  // 'kaufen' statt 'verkaufen'
-                    .setStyle(TextInputStyle.Short)
-                    .setPlaceholder('z.B. 3')
-                    .setRequired(true);
+            modal.addComponents(
+                new ActionRowBuilder().addComponents(ingameNameInput),
+                new ActionRowBuilder().addComponents(amountInput)
+            );
 
-                const firstRow = new ActionRowBuilder().addComponents(ingameNameInput);
-                const secondRow = new ActionRowBuilder().addComponents(amountInput);
+            await interaction.showModal(modal);
+            break;
+        }
 
-                modal.addComponents(firstRow, secondRow);
+        case 'spawner_verkaufen': {
+            const modal = new ModalBuilder()
+                .setCustomId('trade_modal:verkauf')
+                .setTitle('💰 Spawner Verkauf');
 
-                await interaction.showModal(modal);
-                break;
-            }
+            const ingameNameInput = new TextInputBuilder()
+                .setCustomId('ingame_name')
+                .setLabel('Wie lautet dein Ingame-Name?')
+                .setStyle(TextInputStyle.Short)
+                .setPlaceholder('z.B. Steve')
+                .setRequired(true);
 
-            case 'spawner_verkaufen': {
-                await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+            const amountInput = new TextInputBuilder()
+                .setCustomId('amount')
+                .setLabel('Wie viele Spawner möchtest du verkaufen?')
+                .setStyle(TextInputStyle.Short)
+                .setPlaceholder('z.B. 3')
+                .setRequired(true);
 
-                const modal = new ModalBuilder()
-                    .setCustomId('trade_modal:verkauf')  // 'verkauf' in der ID speichern
-                    .setTitle('💰 Spawner Verkauf');
+            modal.addComponents(
+                new ActionRowBuilder().addComponents(ingameNameInput),
+                new ActionRowBuilder().addComponents(amountInput)
+            );
 
-                const ingameNameInput = new TextInputBuilder()
-                    .setCustomId('ingame_name')
-                    .setLabel('Wie lautet dein Ingame-Name?')
-                    .setStyle(TextInputStyle.Short)
-                    .setPlaceholder('z.B. Steve')
-                    .setRequired(true);
-
-                const amountInput = new TextInputBuilder()
-                    .setCustomId('amount')
-                    .setLabel('Wie viele Spawner möchtest du verkaufen?')  // 'verkaufen'
-                    .setStyle(TextInputStyle.Short)
-                    .setPlaceholder('z.B. 3')
-                    .setRequired(true);
-
-                const firstRow = new ActionRowBuilder().addComponents(ingameNameInput);
-                const secondRow = new ActionRowBuilder().addComponents(amountInput);
-
-                modal.addComponents(firstRow, secondRow);
-
-                await interaction.showModal(modal);
-                break;
-            }
+            await interaction.showModal(modal);
+            break;
         }
     }
+}
 
     // --- MODAL SUBMIT HANDLER ---
     if (interaction.isModalSubmit()) {
