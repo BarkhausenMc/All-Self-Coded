@@ -11,7 +11,7 @@ module.exports = async function handleButton(interaction) {
     // CLAIM BUTTON
     // ==========================================
     if (interaction.customId === 'claim') {
-        const trade = trades[interaction.channelId];
+        const trade = store.trades[interaction.channelId];
 
         if (!trade) {
             await interaction.reply({ content: '❌ Trade nicht gefunden.', flags: MessageFlags.Ephemeral });
@@ -21,6 +21,16 @@ module.exports = async function handleButton(interaction) {
         if (trade.claimedBy) {
             await interaction.reply({
                 content: `❌ Bereits von <@${trade.claimedBy}> geclaimt.`,
+                flags: MessageFlags.Ephemeral
+            });
+            return;
+        }
+
+        // Nur Trader dürfen claimen (Role Check)
+        const traderRoleId = process.env.TRADER_ROLE_ID;
+        if (!interaction.member.roles.cache.has(traderRoleId)) {
+            await interaction.reply({
+                content: '❌ Nur Mitglieder mit der "Trader" Rolle dürfen Trades claimen.',
                 flags: MessageFlags.Ephemeral
             });
             return;

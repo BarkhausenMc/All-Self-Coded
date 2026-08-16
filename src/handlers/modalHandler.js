@@ -54,7 +54,8 @@ module.exports = async function handleModal(interaction) {
                     await thread.members.add(trader.id).catch(() => {});
                 }
             } catch (err) {
-                console.log('Konnte Trader nicht hinzufügen:', err.message);
+                // Rate-Limiting oder andere Fehler ruhig ignorieren
+                // console.log('Konnte Trader nicht hinzufügen:', err.message);  // <-- AUSKOMMENTIERN
             }
         }
 

@@ -112,25 +112,20 @@ async function handleVouchModal(interaction) {
     trade.vouches.push(reviewerId);
     store.save();
 
-    // Prüfen: Haben beide bewertet?
+        // Prüfen: Haben beide bewertet?
     if (trade.vouches.length >= 2) {
         // === EINE gemeinsame Vouch-Nachricht bauen ===
-
-                // === EINE gemeinsame Vouch-Nachricht bauen ===
 
         const vouch1 = trade.vouchEntries[0];
         const vouch2 = trade.vouchEntries[1];
 
-        // Wer hat wen bewertet? Kunde und Trader richtig zuordnen
         const customerVouch = vouch1.reviewerId === trade.kundeId ? vouch1 : vouch2;
         const traderVouch = vouch1.reviewerId === trade.claimedBy ? vouch1 : vouch2;
 
-        // Sterne EXAKT für den jeweiligen Vouch generieren
         const customerStars = '⭐'.repeat(customerVouch.rating);
         const traderStars = '⭐'.repeat(traderVouch.rating);
 
         const vouchContainer = new ContainerBuilder()
-            // --- Header: Trade-Infos ---
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
                     `## ${trade.emoji} • Handel #${trade.handNummer}\n\n` +
@@ -143,7 +138,6 @@ async function handleVouchModal(interaction) {
                 )
             )
             .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
-            // --- Bewertung Kunde → Trader ---
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
                     `### 📝 Bewertung von Kunde → Trader\n` +
@@ -152,7 +146,6 @@ async function handleVouchModal(interaction) {
                 )
             )
             .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
-            // --- Bewertung Trader → Kunde ---
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
                     `### 📝 Bewertung von Trader → Kunde\n` +
@@ -161,7 +154,6 @@ async function handleVouchModal(interaction) {
                 )
             );
 
-        // Vouch im Vouch-Channel posten
         const vouchChannel = interaction.guild.channels.cache.get(constants.VOUCH_CHANNEL_ID);
 
         if (vouchChannel) {
@@ -169,8 +161,6 @@ async function handleVouchModal(interaction) {
                 components: [vouchContainer],
                 flags: MessageFlags.IsComponentsV2
             });
-        } else {
-            console.log('Vouch-Channel nicht gefunden!');
         }
 
         // Trade abschließen
@@ -178,16 +168,21 @@ async function handleVouchModal(interaction) {
         trade.closed = true;
         store.save();
 
-        // Original-Nachricht im Thread aktualisieren
-        await updateTradeMessage(interaction.channel, trade);
+        // ORIGINAL-NACHRICHT ZUERST aktualisieren (BEVOR Thread archiviert wird!)
+        try {
+            await updateTradeMessage(interaction.channel, trade);
+        } catch (err) {
+            // Thread vielleicht schon archiviert — ignoriere
+        }
 
-        // Thread archivieren
+        // ERST DANN archivieren
         await interaction.channel.setArchived(true);
 
         // Aus Speicher entfernen
         delete store.trades[interaction.channelId];
         store.save();
 
+        // REPLYS NACH dem Archivieren
         await interaction.reply({
             content: `✅ Beide haben bewertet! Trade abgeschlossen und im Vouch-Channel gepostet.`,
             flags: MessageFlags.Ephemeral
