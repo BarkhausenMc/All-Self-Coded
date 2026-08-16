@@ -71,28 +71,28 @@ client.on('interactionCreate', async (interaction) => {
                         return;
                     }
 
-                                        // Statischer Preis-Block ERSETZEN durch dynamischen:
-                    const priceLines = Object.entries(constants.prices).map(([name, prices]) => {
-                        const ankauf = prices.ankauf === 'Stop' ? '  GESPERRT' : `${prices.ankauf.toFixed(1)}M`;
-                        const verkauf = prices.verkauf === 'Stop' ? '  GESPERRT' : `${prices.verkauf.toFixed(1)}M`;
-                        const emoji = constants.spawnerEmojis[name] || '📦';
-                        return `${emoji} ${name.padEnd(12)} ${ankauf.padStart(10)}  ${verkauf.padStart(10)}`;
-                    }).join('\n');
+                        const priceLines = Object.entries(constants.prices).map(([name, prices]) => {
+                            const ankauf = prices.ankauf === 'Stop' ? 'GESPERRT' : `${prices.ankauf.toFixed(1)}M`;
+                            const verkauf = prices.verkauf === 'Stop' ? 'GESPERRT' : `${prices.verkauf.toFixed(1)}M`;
+                            const emoji = constants.spawnerEmojis[name] || '📦';
+                            return `${emoji} ${name.padEnd(12)} ${ankauf.padStart(10)}  ${verkauf.padStart(10)}`;
+                        }).join('\n');
 
-                    const container = new ContainerBuilder()
-                        .addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent('## 🛒 • SPAWNER TRADING • 💰\n*Yayks Spawner Trading*')
-                        )
-                        .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
-                        .addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent(
-                                '```\n' +
-                                'SPAWNER      🛒ANKAUF    💰VERKAUF\n' +
-                                '────────────────────────────────────\n' +
-                                priceLines + '\n' +
-                                '```'
+                        const container = new ContainerBuilder()
+                            .addTextDisplayComponents(
+                                new TextDisplayBuilder().setContent('## 🛒 • SPAWNER TRADING • 💰\n*Yayks Spawner Trading*')
                             )
-                        )
+                            .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
+                            .addTextDisplayComponents(
+                                new TextDisplayBuilder().setContent(
+                                    '```\n' +
+                                    'SPAWNER      🛒ANKAUF    💰VERKAUF\n' +
+                                    '────────────────────────────────────\n' +
+                                    priceLines + '\n' +
+                                    '```'
+                                )
+                            )
+
                         .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
                         .addTextDisplayComponents(
                             new TextDisplayBuilder().setContent('💰 **VERKAUFEN** — Du **verkaufst** uns deine Spawner')

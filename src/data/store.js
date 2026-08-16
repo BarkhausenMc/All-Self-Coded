@@ -35,6 +35,21 @@ function saveData() {
 
 loadData();
 
+function loadData() {
+    try {
+        if (fs.existsSync(DATA_FILE)) {
+            const raw = fs.readFileSync(DATA_FILE, 'utf8');
+            data = JSON.parse(raw);
+        }
+        if (!data.tradeCounters) data.tradeCounters = {};
+        if (!data.trades) data.trades = {};
+        if (!data.vouches) data.vouches = [];
+        console.log('✅ Datenbank geladen:', Object.keys(data.trades).length, 'aktive Trades');
+    } catch (err) {
+        console.error('❌ Fehler beim Laden der Datenbank:', err);
+    }
+}
+
 // EXPORTE DIREKT (keine Getter!)
 module.exports = {
     tradeCounters: data.tradeCounters,
