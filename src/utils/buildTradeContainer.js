@@ -41,11 +41,6 @@ module.exports = function buildTradeContainer(data) {
         .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(statusText)
-        )
-        .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
-        .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(
-                `<@&${constants.TRADER_ROLE_ID}> — Neuer Trade von \`${data.ingameName}\`! 📢`
-            )
-        )
+        );
+
 };
