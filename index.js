@@ -201,11 +201,11 @@ client.on('interactionCreate', async (interaction) => {
                 Creeper:  { ankauf: 10.0, verkauf: 9.0 }
             };
             const spawnerEmojis = {
-              skeleton: '💀',
-              creeper: '💥'
+              Skeleton: '💀',
+              Creeper: '💥'
             };
 
-const spawnerEmoji = spawnerEmojis[spawnerType] || '📦';
+const spawnerEmoji = spawnerEmojis[spawnerType] || '❌';
             const pricePerUnit = prices[spawnerType][tradeType];
             const totalPrice = pricePerUnit * parseInt(amount);
 
