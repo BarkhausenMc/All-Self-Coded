@@ -9,7 +9,10 @@ const {
     TextDisplayBuilder,
     SeparatorBuilder,
     MessageFlags,
-    ChannelType    
+    ChannelType,
+    ModalBuilder,        
+    TextInputBuilder,    
+    TextInputStyle        
 } = require('discord.js');
 require('dotenv').config();
 
