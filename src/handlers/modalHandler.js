@@ -96,7 +96,7 @@ module.exports = async function handleModal(interaction) {
                 content: `<@&${constants.TRADER_ROLE_ID}> — Neuer Trade von \`${data.ingameName}\`! 📢`
             });
         }
-s
+
         // === TRADE IN LOG POSTEN ===
         if (constants.LOG_CHANNEL_ID) {
             try {
