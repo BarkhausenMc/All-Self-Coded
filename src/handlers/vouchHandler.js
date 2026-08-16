@@ -173,7 +173,12 @@ async function handleVouchModal(interaction) {
         const vouchContainer = new ContainerBuilder()
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
-                    `## ✅ Handel abgeschlossen • #${trade.handNummer}\n\n` +
+                    `## ✅ Handel abgeschlossen • #${trade.handNummer}\n\n` 
+                )
+            )
+            .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(
                     `**👤 Kunde:** <@${trade.kundeId}>\n` +
                     `**🤝 Trader:** <@${trade.claimedBy}>`
                 )
@@ -182,8 +187,8 @@ async function handleVouchModal(interaction) {
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
                     `**${trade.emoji} Geschäft:** ${trade.action} ||(aus sicht des Kunden)||\n` +
-                    `**${trade.spawnerEmoji} Spawner:** ${trade.spawnerType}\n` +
                     `**📦 Menge:** ${trade.amount}\n` +
+                    `**${trade.spawnerEmoji} Spawner:** ${trade.spawnerType}\n` +
                     `**💰 Gesamtpreis:** ${trade.totalPrice.toFixed(1)}M\n\n` 
                 )
             )
