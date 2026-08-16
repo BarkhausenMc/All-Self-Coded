@@ -13,6 +13,7 @@ const store = require('../data/store');
 const constants = require('../config/constants');
 const updateTradeMessage = require('../utils/updateTradeMessage');
 const buildTradeContainer = require('../utils/buildTradeContainer');
+const { testedVersions } = require('mineflayer');
 
 // === HELPER: Trade finden mit mehreren IDs ===
 function findTrade(channelId) {
@@ -173,13 +174,18 @@ async function handleVouchModal(interaction) {
         const vouchContainer = new ContainerBuilder()
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
-                    `## ${trade.emoji} • Handel #${trade.handNummer}\n\n` +
-                    `**${trade.emoji} Aktion:** ${trade.action}\n` +
-                    `**${trade.spawnerEmoji} Spawner:** ${trade.spawnerType}\n` +
-                    `**📦 Menge:** ${trade.amount}\n` +
-                    `**💰 Gesamtpreis:** ${trade.totalPrice.toFixed(1)}M\n\n` +
+                    `## ✅ Handel abgeschlossen • #${trade.handNummer}\n\n` +
                     `**👤 Kunde:** <@${trade.kundeId}>\n` +
                     `**🤝 Trader:** <@${trade.claimedBy}>`
+                )
+            )
+            .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(
+                    `**${trade.emoji} Geschäft:** ${trade.action} ||(aus sicht des Kunden)||\n` +
+                    `**${trade.spawnerEmoji} Spawner:** ${trade.spawnerType}\n` +
+                    `**📦 Menge:** ${trade.amount}\n` +
+                    `**💰 Gesamtpreis:** ${trade.totalPrice.toFixed(1)}M\n\n` 
                 )
             )
             .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))

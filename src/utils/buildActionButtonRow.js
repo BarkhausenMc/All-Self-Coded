@@ -9,7 +9,7 @@ module.exports = function buildActionButtonRow(data) {
             new ButtonBuilder()
                 .setCustomId('close')
                 .setLabel('Schließen')
-                .setStyle(ButtonStyle.Danger)
+                .setStyle(ButtonStyle.Success)
                 .setEmoji('✅'),
             new ButtonBuilder()
                 .setCustomId('abbruch')

@@ -167,9 +167,9 @@ module.exports = async function handleButton(interaction) {
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
                     `## 📝 • Trade Bewertung\n\n` +
-                    `Bitte bewertet euch gegenseitig!\n` +
-                    `Wähle unten deine Sterne-Bewertung aus.\n` +
-                    `Danach kannst du noch einen Text schreiben.\n\n` +
+                    `Bitte **bewertet** euch gegenseitig!\n` +
+                    `Wähle unten deine **Sterne-Bewertung** aus.\n` +
+                    `Du hast noch eine **Anmerkung**?\nKein Problem du kannst sie Gleich mit in die Bewertung schreiben.\n\n` +
                     `**Kunde:** <@${trade.kundeId}>\n` +
                     `**Trader:** <@${trade.claimedBy}>`
                 )
