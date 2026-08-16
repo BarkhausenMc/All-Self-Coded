@@ -94,8 +94,8 @@ client.on('interactionCreate', async (interaction) => {
                     .setCustomId('select_spawner:ankauf')
                     .setPlaceholder('Spawner auswählen...')
                     .addOptions([
-                        { label: '💀 Skeleton Spawner', description: 'Preis: 10.0M', value: 'skeleton', emoji: '💀' },
-                        { label: '💥 Creeper Spawner', description: 'Preis: 10.0M', value: 'creeper', emoji: '💥' }
+                        { label: '💀 Skeleton Spawner', description: 'Preis: 10.0M', value: 'Skeleton', emoji: '💀' },
+                        { label: '💥 Creeper Spawner', description: 'Preis: 10.0M', value: 'Creeper', emoji: '💥' }
                     ]);
 
                 const row = new ActionRowBuilder().addComponents(selectMenu);
@@ -118,8 +118,8 @@ client.on('interactionCreate', async (interaction) => {
                     .setCustomId('select_spawner:verkauf')
                     .setPlaceholder('Spawner auswählen...')
                     .addOptions([
-                        { label: '💀 Skeleton Spawner', description: 'Du bekommst: 8.0M', value: 'skeleton1', emoji: '💀' },
-                        { label: '💥 Creeper Spawner', description: 'Du bekommst: 9.0M', value: 'creeper', emoji: '💥' }
+                        { label: '💀 Skeleton Spawner', description: 'Du bekommst: 8.0M', value: 'Skeleton', emoji: '💀' },
+                        { label: '💥 Creeper Spawner', description: 'Du bekommst: 9.0M', value: 'Creeper', emoji: '💥' }
                     ]);
 
                 const row = new ActionRowBuilder().addComponents(selectMenu);
@@ -195,19 +195,34 @@ client.on('interactionCreate', async (interaction) => {
 
             await thread.members.add(interaction.user.id);
 
+            // Preis-Tabelle (in Millionen)
+            const prices = {
+                skeleton: { ankauf: 10.0, verkauf: 8.0 },
+                creeper:  { ankauf: 10.0, verkauf: 9.0 }
+            };
+
+            const pricePerUnit = prices[spawnerType][tradeType];
+            const totalPrice = pricePerUnit * parseInt(amount);
+
             const container = new ContainerBuilder()
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(
-                        `## ${emoji} • Spawner ${action}\n\n` +
+                        `## ${emoji} • Spawner ${action}\n\n`
+                    )
+                )
+                .addSeparatorComponents(
+                    new SeparatorBuilder().setDivider(true).setSpacing(1)
+                )
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(
                         `**Kunde:** <@${interaction.user.id}>\n` +
-                        `**Ingame-Name:** \`${ingameName}\`\n` +
+                        `**👤 ING:** \`${ingameName}\`\n\n` +
                         `**Spawner-Typ:** ${spawnerType}\n` +
-                        `**Menge:** ${amount}\n\n` +
-                        `Ein Staff-Mitglied wird sich gleich um deinen Trade kümmern.\n` +
-                        `Bitte habe etwas Geduld! 🕐`
+                        `**📦 Menge:** ${amount}\n\n` +
+                        `**💵 Preis/Stk:** ${pricePerUnit.toFixed(1)}M\n` +
+                        `**💰 Gesamtpreis:** ${totalPrice.toFixed(1)}M`
                     )
                 );
-
             await thread.send({
                 components: [container],
                 flags: MessageFlags.IsComponentsV2
