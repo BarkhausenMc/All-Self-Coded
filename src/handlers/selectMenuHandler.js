@@ -3,9 +3,7 @@ const {
     ModalBuilder,
     TextInputBuilder,
     TextInputStyle,
-    MessageFlags,
-    ContainerBuilder,
-    TextDisplayBuilder
+    MessageFlags
 } = require('discord.js');
 const constants = require('../config/constants');
 
@@ -20,13 +18,14 @@ module.exports = async function handleSelectMenu(interaction) {
         if (isStopped) {
             const actionLabel = tradeType === 'ankauf' ? 'ANKAUF' : 'VERKAUF';
             
+            // ⭐ OHNE IsComponentsV2 und OHNE components!
             await interaction.update({
-                components: [], // Alle Komponenten entfernen
                 content: `## ❌ • ${spawnerType} ${actionLabel} derzeit nicht verfügbar\n\n` +
                     `Der **${spawnerType}** ${actionLabel.toLowerCase()} ist aktuell **gestoppt**.\n` +
                     `Bitte prüfe später wieder oder wähle einen anderen Spawner.\n\n` +
-                    `📌 *Dieser Status wird vom Admin verwaltet.*`,
-                flags: MessageFlags.IsComponentsV2
+                    `📌 *Dieser Status wird vom Admin verwaltet.*`
+                // KEINE flags: MessageFlags.IsComponentsV2
+                // KEINE components
             });
             return;
         }
