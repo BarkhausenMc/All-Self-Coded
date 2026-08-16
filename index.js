@@ -166,6 +166,7 @@ client.on('interactionCreate', async (interaction) => {
             });
             return;
         }
+// --- CLOSE BUTTON HANDLER (ganz oben im interactionCreate, nach Claim Handler) ---
 if (interaction.customId === 'close') {
     const trade = trades[interaction.channelId];
 
@@ -187,27 +188,49 @@ if (interaction.customId === 'close') {
         return;
     }
 
-    // Thread schließen
-    await interaction.channel.parentId
-        ? await interaction.channel.setArchived(true)
-        : await interaction.channel.delete();
-
-    // Trade aus trades entfernen
-    delete trades[interaction.channelId];
-
-    // Nachricht an alle im Channel (falls Thread nicht gelöscht wird)
-    const msg = await interaction.channel.messages.fetch(trade.messageId);
+    // Container neu bauen OHNE Buttons (mit "abgeschlossen"-Text)
     const closeContainer = new ContainerBuilder()
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(
-                `✅ **Trade abgeschlossen!**\n\nDieser Thread wurde geschlossen.`
+                `## ${trade.emoji} • Spawner ${trade.action}\n\n` +
+                `**🤝 • Handel #${trade.handNummer}**`
+            )
+        )
+        .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+                `**👤 Kunde:** <@${trade.kundeId}>\n` +
+                `**🎮 ING:** \`${trade.ingameName}\`\n` +
+                `**${trade.spawnerEmoji} Spawner:** ${trade.spawnerType}\n`
+            )
+        )
+        .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+                `**📦 Menge:** ${trade.amount}\n` +
+                `**💵 Preis/Stk:** ${trade.pricePerUnit.toFixed(1)}M\n` +
+                `**💰 Gesamtpreis:** ${trade.totalPrice.toFixed(1)}M`
+            )
+        )
+        .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+                `✅ **Thread abgeschlossen!**\n\nDieser Thread wurde geschlossen.`
             )
         );
 
+    // Original-Nachricht bearbeiten (Buttons entfernen)
+    const msg = await interaction.channel.messages.fetch(trade.messageId);
     await msg.edit({
-        components: [closeContainer],
+        components: [closeContainer],  // ← NUR Container, KEINE Buttons mehr
         flags: MessageFlags.IsComponentsV2
     });
+
+    // Thread archivieren oder löschen
+    await interaction.channel.setArchived(true);
+
+    // Trade aus trades entfernen
+    delete trades[interaction.channelId];
 
     await interaction.reply({
         content: `✅ Thread wurde geschlossen.`,
