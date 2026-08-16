@@ -105,7 +105,7 @@ if (constants.TRADER_ROLE_ID) {
             await new Promise(resolve => setTimeout(resolve, 500));
             
             await thread.send({
-                content: `<@&${constants.TRADER_ROLE_ID}> — Neuer Trade von \`${tradeData.ingameName}\`! 📢`
+                content: `||+<@&${constants.TRADER_ROLE_ID}> — Neuer Trade von \`${tradeData.ingameName}\`!*||`
             });
             
             console.log('✅ Trader-Ping erfolgreich gesendet');
