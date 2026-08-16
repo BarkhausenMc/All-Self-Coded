@@ -116,19 +116,21 @@ async function handleVouchModal(interaction) {
     if (trade.vouches.length >= 2) {
         // === EINE gemeinsame Vouch-Nachricht bauen ===
 
+                // === EINE gemeinsame Vouch-Nachricht bauen ===
+
         const vouch1 = trade.vouchEntries[0];
         const vouch2 = trade.vouchEntries[1];
 
-        // Sterne als Unicode
-        const stars1 = '⭐'.repeat(vouch1.rating);
-        const stars2 = '⭐'.repeat(vouch2.rating);
-
-        // Wer hat wen bewertet?
+        // Wer hat wen bewertet? Kunde und Trader richtig zuordnen
         const customerVouch = vouch1.reviewerId === trade.kundeId ? vouch1 : vouch2;
         const traderVouch = vouch1.reviewerId === trade.claimedBy ? vouch1 : vouch2;
 
+        // Sterne EXAKT für den jeweiligen Vouch generieren
+        const customerStars = '⭐'.repeat(customerVouch.rating);
+        const traderStars = '⭐'.repeat(traderVouch.rating);
+
         const vouchContainer = new ContainerBuilder()
-            // --- Header: Handel # ---
+            // --- Header: Trade-Infos ---
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
                     `## ${trade.emoji} • Handel #${trade.handNummer}\n\n` +
@@ -141,20 +143,20 @@ async function handleVouchModal(interaction) {
                 )
             )
             .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
-            // --- Bewertung Kunde ---
+            // --- Bewertung Kunde → Trader ---
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
                     `### 📝 Bewertung von Kunde → Trader\n` +
-                    `${stars1} (${customerVouch.rating}/5)\n` +
+                    `${customerStars} (${customerVouch.rating}/5)\n` +
                     `> ${customerVouch.text}`
                 )
             )
             .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
-            // --- Bewertung Trader ---
+            // --- Bewertung Trader → Kunde ---
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
                     `### 📝 Bewertung von Trader → Kunde\n` +
-                    `${stars2} (${traderVouch.rating}/5)\n` +
+                    `${traderStars} (${traderVouch.rating}/5)\n` +
                     `> ${traderVouch.text}`
                 )
             );
