@@ -8,7 +8,8 @@ const {
     ContainerBuilder,
     TextDisplayBuilder,
     SeparatorBuilder,
-    MessageFlags
+    MessageFlags,
+    ChannelType    
 } = require('discord.js');
 require('dotenv').config();
 
@@ -158,17 +159,41 @@ client.on('interactionCreate', async (interaction) => {
         }
     }
 
-    if (interaction.isStringSelectMenu()) {
+if (interaction.isStringSelectMenu()) {
     if (interaction.customId === 'spawner_ankauf_select') {
         const selected = interaction.values[0];
 
+        const thread = await interaction.channel.threads.create({
+            name: `🛒 Ankauf - ${interaction.user.username}`,
+            type: ChannelType.PrivateThread,
+            invitable: false
+        });
+
+        await thread.members.add(interaction.user.id);
+
         const container = new ContainerBuilder()
             .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(`✅ Du hast **${selected}** zum Kauf ausgewählt!\nMöchtest du den Trade abschließen?`)
+                new TextDisplayBuilder().setContent(
+                    `## 🛒 • Spawner Ankauf\n` +
+                    `Hallo <@${interaction.user.id}>,\n\n` +
+                    `Du hast **${selected}** zum Kauf ausgewählt.\n` +
+                    `Ein Staff-Mitglied wird sich gleich um deinen Trade kümmern.\n\n` +
+                    `Bitte hab etwas Geduld! 🕐`
+                )
             );
 
-        await interaction.update({
+        await thread.send({
             components: [container],
+            flags: MessageFlags.IsComponentsV2
+        });
+
+        await interaction.update({
+            components: [
+                new ContainerBuilder()
+                    .addTextDisplayComponents(
+                        new TextDisplayBuilder().setContent(`✅ Ein privater Thread wurde erstellt: <#${thread.id}>`)
+                    )
+            ],
             flags: MessageFlags.IsComponentsV2
         });
     }
@@ -176,13 +201,37 @@ client.on('interactionCreate', async (interaction) => {
     if (interaction.customId === 'spawner_verkauf_select') {
         const selected = interaction.values[0];
 
+        const thread = await interaction.channel.threads.create({
+            name: `💰 Verkauf - ${interaction.user.username}`,
+            type: ChannelType.PrivateThread,
+            invitable: false
+        });
+
+        await thread.members.add(interaction.user.id);
+
         const container = new ContainerBuilder()
             .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(`✅ Du hast **${selected}** zum Verkauf ausgewählt!\nMöchtest du den Trade abschließen?`)
+                new TextDisplayBuilder().setContent(
+                    `## 💰 • Spawner Verkauf\n` +
+                    `Hallo <@${interaction.user.id}>,\n\n` +
+                    `Du hast **${selected}** zum Verkauf ausgewählt.\n` +
+                    `Ein Staff-Mitglied wird sich gleich um deinen Trade kümmern.\n\n` +
+                    `Bitte hab etwas Geduld! 🕐`
+                )
             );
 
-        await interaction.update({
+        await thread.send({
             components: [container],
+            flags: MessageFlags.IsComponentsV2
+        });
+
+        await interaction.update({
+            components: [
+                new ContainerBuilder()
+                    .addTextDisplayComponents(
+                        new TextDisplayBuilder().setContent(`✅ Ein privater Thread wurde erstellt: <#${thread.id}>`)
+                    )
+            ],
             flags: MessageFlags.IsComponentsV2
         });
     }
