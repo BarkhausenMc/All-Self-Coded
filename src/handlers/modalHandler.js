@@ -138,7 +138,7 @@ module.exports = async function handleModal(interaction) {
             components: [
                 new ContainerBuilder()
                     .addTextDisplayComponents(
-                        new TextDisplayBuilder().setContent(`✅ Dein Trade-Thread wurde erstellt: <#${thread.id}>`)
+                        new TextDisplayBuilder().setContent(`✅ Dein Trade-Ticket wurde erstellt: <#${thread.id}>`)
                     )
             ],
             flags: MessageFlags.IsComponentsV2
