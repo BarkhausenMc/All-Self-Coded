@@ -8,20 +8,14 @@ const {
     ContainerBuilder,
     TextDisplayBuilder,
     SeparatorBuilder,
-    MessageFlags,
-    ModalBuilder,
-    TextInputBuilder,
-    TextInputStyle,
-    ChannelType
+    MessageFlags
 } = require('discord.js');
-const fs = require('fs');
 require('dotenv').config();
 
-const spawnerData = JSON.parse(fs.readFileSync('./config.json', 'utf8'));
-const { formatMoney } = require('./formatMoney.js');
-
 const client = new Client({
-    intents: [GatewayIntentBits.Guilds]
+    intents: [
+        GatewayIntentBits.Guilds
+    ]
 });
 
 client.once('ready', async () => {
@@ -30,12 +24,6 @@ client.once('ready', async () => {
     const channel = client.channels.cache.get('1537389571103522868');
 
     if (channel) {
-        let priceTable = '```\nSPAWNER      🛒ANKAUF    💰VERKAUF\n────────────────────────────────────\n';
-        spawnerData.spawners.forEach(spawner => {
-            priceTable += `${spawner.emoji} ${spawner.name.padEnd(12)} ${formatMoney(spawner.buyPrice).padStart(10)}   ${formatMoney(spawner.sellPrice).padStart(10)}\n`;
-        });
-        priceTable += '```';
-
         const container = new ContainerBuilder()
             .setAccentColor(0x1a1a1a)
             .addTextDisplayComponents(
@@ -45,7 +33,15 @@ client.once('ready', async () => {
                 new SeparatorBuilder().setDivider(true).setSpacing(1)
             )
             .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(priceTable)
+                new TextDisplayBuilder().setContent(
+                    '```\n' +
+                    'SPAWNER      🛒ANKAUF    💰VERKAUF\n' +
+                    '────────────────────────────────────\n' +
+                    '💀 Skeleton      10.0M        8.0M\n' +
+                    '💥 Creeper       10.0M        9.0M\n' +
+                    '🤖 Iron Golem    10.0M        7.0M\n' +
+                    '```'
+                )
             )
             .addSeparatorComponents(
                 new SeparatorBuilder().setDivider(true).setSpacing(1)
@@ -61,11 +57,11 @@ client.once('ready', async () => {
             )
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent('Klicke unten auf den `💰 VERKAUFEN` oder `🛒 ANKAUF` Button,\num einen Trade zu Starten.')
-            );
+            ); // <-- Klammer hier geschlossen!
 
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
-                .setCustomId('spawner_ankaufen')
+                .setCustomId('spawner_ankaufen') // ⚠️ HIER KORRIGIERT!
                 .setLabel('Spawner Kaufen')
                 .setStyle(ButtonStyle.Primary)
                 .setEmoji('🛒'),
