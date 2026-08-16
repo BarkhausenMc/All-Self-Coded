@@ -37,9 +37,9 @@ client.once('ready', async () => {
                     '```\n' +
                     'SPAWNER      🛒ANKAUF    💰VERKAUF\n' +
                     '────────────────────────────────────\n' +
-                    '💀 Skeleton      10.0M        8.0M\n' +
-                    '💥 Creeper       10.0M        9.0M\n' +
-                    '🤖 Iron Golem    10.0M        7.0M\n' +
+                    '💀 Skeleton   │   10.0M    │   8.0M\n' +
+                    '💥 Creeper    │   10.0M    │    9.0M\n' +
+                    '🤖 Iron Golem │   10.0M    │    7.0M\n' +
                     '```'
                 )
             )
