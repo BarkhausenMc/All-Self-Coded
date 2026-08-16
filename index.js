@@ -10,7 +10,8 @@ const {
     MessageFlags,
     SlashCommandBuilder,
     REST,
-    Routes
+    Routes,
+    ChannelType
 } = require('discord.js');
 require('dotenv').config();
 
@@ -61,6 +62,32 @@ client.on('interactionCreate', async (interaction) => {
                         await interaction.reply({ content: '❌ Nur Administratoren können das Setup ausführen.', flags: MessageFlags.Ephemeral });
                         return;
                     }
+
+                    // ALTE PANELS AUFRÄUMEN
+                    try {
+                        const recentMessages = await interaction.channel.messages.fetch({ limit: 20 });
+                        for (const msg of recentMessages.values()) {
+                            if (!msg.components || msg.components.length === 0) continue;
+                            for (const row of msg.components) {
+                                if (!row.components) continue;
+                                for (const comp of row.components) {
+                                    if (comp.customId === 'spawner_ankaufen' || comp.customId === 'spawner_verkaufen') {
+                                        try {
+                                            await msg.delete();
+                                            console.log('Altes Panel gelöscht:', msg.id);
+                                        } catch (err) {
+                                            // Ignorieren (vielleicht schon gelöscht)
+                                        }
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    } catch (err) {
+                        console.log('Fehler beim Aufräumen alter Panels:', err.message);
+                    }
+
+                    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
                     const priceLines = Object.entries(constants.prices).map(([name, prices]) => {
                         const ankauf = prices.ankauf === 'Stop' ? 'GESPERRT' : `${prices.ankauf.toFixed(1)}M`;
@@ -113,7 +140,7 @@ client.on('interactionCreate', async (interaction) => {
                         flags: MessageFlags.IsComponentsV2
                     });
 
-                    await interaction.reply({ content: '✅ Spawner Trading Panel gesendet!', flags: MessageFlags.Ephemeral });
+                    await interaction.editReply({ content: '✅ Spawner Trading Panel gesendet!' });
                     return;
                 }
             }
