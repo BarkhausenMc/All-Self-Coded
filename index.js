@@ -221,11 +221,18 @@ const spawnerEmoji = spawnerEmojis[spawnerType] || '❌';
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(
                         `**👤Kunde:** <@${interaction.user.id}>\n` +
-                        `**🎮ING:** \`${ingameName}\`\n\n` +
-                        `**${spawnerEmoji}Spawner-Typ:** ${spawnerType}\n` +
+                        `**🎮ING:** \`${ingameName}\`\n\n` 
+                    )
+                )
+                .addSeparatorComponents(
+                new SeparatorBuilder().setDivider(true).setSpacing(1)
+                )
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(
+                        `**Spawner:**${spawnerEmoji} ${spawnerType}\n` +
                         `**📦 Menge:** ${amount}\n\n` +
                         `**💵 Preis/Stk:** ${pricePerUnit.toFixed(1)}M\n` +
-                        `**💰 Gesamtpreis:** ${totalPrice.toFixed(1)}M`
+                        `**💰 Gesamtpreis:** ${totalPrice.toFixed(1)}M`                        
                     )
                 );
             await thread.send({
