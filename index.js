@@ -304,12 +304,12 @@ client.on('interactionCreate', async (interaction) => {
                     .setEmoji('🙋‍♂️')
             );
 
-            container.addActionRowComponents(claimRow);
+            
 
-            const tradeMsg = await thread.send({
-                components: [container],
-                flags: MessageFlags.IsComponentsV2
-            });
+const tradeMsg = await thread.send({
+    components: [container, claimRow],  
+    flags: MessageFlags.IsComponentsV2
+});
 
             tradeData.messageId = tradeMsg.id;
             trades[thread.id] = tradeData;
