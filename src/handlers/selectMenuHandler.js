@@ -1,11 +1,11 @@
-const { 
-    ActionRowBuilder, 
-    ModalBuilder, 
-    TextInputBuilder, 
-    TextInputStyle, 
+const {
+    ActionRowBuilder,
+    ModalBuilder,
+    TextInputBuilder,
+    TextInputStyle,
     MessageFlags,
-    ContainerBuilder,      // ← FEHLTE
-    TextDisplayBuilder     // ← FEHLTE
+    ContainerBuilder,
+    TextDisplayBuilder
 } = require('discord.js');
 const constants = require('../config/constants');
 
@@ -33,7 +33,6 @@ module.exports = async function handleSelectMenu(interaction) {
             return;
         }
 
-        // Modal bauen
         const modal = new ModalBuilder()
             .setCustomId(`trade_modal:${tradeType}:${spawnerType}`)
             .setTitle(tradeType === 'ankauf' ? '🛒 Spawner Ankauf' : '💰 Spawner Verkauf');

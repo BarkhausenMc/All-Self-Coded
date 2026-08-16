@@ -1,29 +1,30 @@
-const { ActionRowBuilder, StringSelectMenuBuilder, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, MessageFlags } = require('discord.js');
+const {
+    ActionRowBuilder,
+    StringSelectMenuBuilder,
+    ContainerBuilder,
+    TextDisplayBuilder,
+    SeparatorBuilder,
+    MessageFlags
+} = require('discord.js');
+
 const store = require('../data/store');
-const { trades } = store;
 const constants = require('../config/constants');
 const updateTradeMessage = require('../utils/updateTradeMessage');
-const buildTradeContainer = require('../utils/buildTradeContainer');
 
-// Hilfsfunktion: Thread nach X Sekunden schließen
 async function closeThreadAfterDelay(channel, delaySeconds) {
     setTimeout(async () => {
         try {
-            // Locken (niemand kann mehr schreiben)
             await channel.setLocked(true);
-            // Archivieren
             await channel.setArchived(true);
         } catch (err) {
-            // Ignorieren — Thread vielleicht schon weg
+            // Ignorieren
         }
     }, delaySeconds * 1000);
 }
 
 module.exports = async function handleButton(interaction) {
 
-    // ==========================================
-    // CLAIM BUTTON (nur Trader)
-    // ==========================================
+    // === CLAIM BUTTON ===
     if (interaction.customId === 'claim') {
         const trade = store.trades[interaction.channelId];
 
@@ -40,9 +41,7 @@ module.exports = async function handleButton(interaction) {
             return;
         }
 
-        // Nur Trader dürfen claimen
-        const traderRoleId = constants.TRADER_ROLE_ID;
-        if (!interaction.member.roles.cache.has(traderRoleId)) {
+        if (!interaction.member.roles.cache.has(constants.TRADER_ROLE_ID)) {
             await interaction.reply({
                 content: '❌ Nur Mitglieder mit der Trader-Rolle dürfen Trades claimen.',
                 flags: MessageFlags.Ephemeral
@@ -62,9 +61,7 @@ module.exports = async function handleButton(interaction) {
         return;
     }
 
-    // ==========================================
-    // CLOSE BUTTON → Startet Vouch-Phase
-    // ==========================================
+    // === CLOSE BUTTON → Vouch-Phase ===
     if (interaction.customId === 'close') {
         const trade = store.trades[interaction.channelId];
 
@@ -91,7 +88,6 @@ module.exports = async function handleButton(interaction) {
 
         await updateTradeMessage(interaction.channel, trade);
 
-        // Vouch-Nachricht mit Stern-Auswahl senden
         const starSelect = new StringSelectMenuBuilder()
             .setCustomId('vouch_stars')
             .setPlaceholder('⭐ Bewerte deinen Trade-Partner (1-5 Sterne)')
@@ -130,9 +126,7 @@ module.exports = async function handleButton(interaction) {
         return;
     }
 
-    // ==========================================
-    // ABBRUCH BUTTON → 5 Sek Countdown
-    // ==========================================
+    // === ABBRUCH BUTTON ===
     if (interaction.customId === 'abbruch') {
         const trade = store.trades[interaction.channelId];
 
@@ -149,7 +143,6 @@ module.exports = async function handleButton(interaction) {
 
         await updateTradeMessage(interaction.channel, trade);
 
-        // Countdown-Nachricht senden
         await interaction.channel.send({
             content: `⏳ Dieses Ticket wird in **5 Sekunden** geschlossen...`,
         });
@@ -159,7 +152,6 @@ module.exports = async function handleButton(interaction) {
             flags: MessageFlags.Ephemeral
         });
 
-        // Nach 5 Sekunden archivieren
         closeThreadAfterDelay(interaction.channel, 5);
 
         delete store.trades[interaction.channelId];
@@ -167,9 +159,7 @@ module.exports = async function handleButton(interaction) {
         return;
     }
 
-    // ==========================================
-    // SPAWNER TRADING BUTTONS
-    // ==========================================
+    // === SPAWNER TRADING BUTTONS ===
     if (interaction.customId === 'spawner_ankaufen') {
         const selectMenu = new StringSelectMenuBuilder()
             .setCustomId('select_spawner:ankauf')
