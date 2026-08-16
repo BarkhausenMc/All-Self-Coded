@@ -1,10 +1,7 @@
 const {
     ActionRowBuilder,
-    ButtonBuilder,
-    ButtonStyle,
     ContainerBuilder,
     TextDisplayBuilder,
-    SeparatorBuilder,
     MessageFlags,
     ChannelType
 } = require('discord.js');
@@ -81,7 +78,8 @@ module.exports = async function handleModal(interaction) {
             totalPrice,
             handNummer,
             emoji,
-            action
+            action,
+            createdChannelId: thread.id  // ⭐ ZUSÄTZLICH FÜR DEBUGGING
         };
 
         const container = buildTradeContainer(tradeData);
@@ -125,8 +123,16 @@ module.exports = async function handleModal(interaction) {
         }
 
         tradeData.messageId = tradeMsg.id;
+        
+        // ⭐ SPREICHE UNTER BEIDEN KEYS (thread.id UND thread.id als String)
         store.trades[thread.id] = tradeData;
+        store.trades[String(thread.id)] = tradeData;
+        store.trades[String(parseInt(thread.id))] = tradeData;
+        
         store.save();
+
+        console.log('✅ Trade gespeichert unter IDs:', [thread.id, String(thread.id), String(parseInt(thread.id))]);
+        console.log('Alle Trade-Keys im Store:', Object.keys(store.trades));
 
         await interaction.editReply({
             components: [

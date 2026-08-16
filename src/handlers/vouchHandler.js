@@ -14,6 +14,32 @@ const constants = require('../config/constants');
 const updateTradeMessage = require('../utils/updateTradeMessage');
 const buildTradeContainer = require('../utils/buildTradeContainer');
 
+// === HELPER: Trade finden mit mehreren IDs ===
+function findTrade(channelId) {
+    const variants = [
+        channelId,
+        String(channelId),
+        String(parseInt(channelId)),
+        parseInt(channelId),
+        channelId.toString()
+    ];
+    
+    const uniqueVariants = [...new Set(variants)];
+    
+    for (const variant of uniqueVariants) {
+        if (store.trades[variant]) {
+            console.log(`[VAUCH] Trade gefunden unter Key: "${variant}"`);
+            return store.trades[variant];
+        }
+    }
+    
+    console.warn(`[VAUCH] Trade NICHT gefunden für Kanal-ID: "${channelId}"`);
+    console.warn(`Versuchte Keys:`, uniqueVariants);
+    console.warn(`Verfügbare Trade-Keys im Store:`, Object.keys(store.trades));
+    
+    return null;
+}
+
 // === TRADE LOGGING ===
 async function logTrade(interaction, trade, status) {
     const logChannel = interaction.guild.channels.cache.get(constants.LOG_CHANNEL_ID);
@@ -45,7 +71,7 @@ async function logTrade(interaction, trade, status) {
 async function handleVouchSelect(interaction) {
     if (interaction.customId !== 'vouch_stars') return;
 
-    const trade = store.trades[interaction.channelId];
+    const trade = findTrade(interaction.channelId);
 
     if (!trade || !trade.awaitingVouch) {
         await interaction.reply({
@@ -98,7 +124,7 @@ async function handleVouchModal(interaction) {
 
     const stars = parseInt(interaction.customId.split(':')[1]);
     const text = interaction.fields.getTextInputValue('vouch_text') || '*Kein Text*';
-    const trade = store.trades[interaction.channelId];
+    const trade = findTrade(interaction.channelId);
 
     if (!trade || !trade.awaitingVouch) {
         await interaction.reply({
@@ -207,6 +233,8 @@ async function handleVouchModal(interaction) {
                 await logTrade(interaction, trade, '✅ ABGESCHLOSSEN');
                 await interaction.channel.delete();
                 delete store.trades[interaction.channelId];
+                delete store.trades[String(interaction.channelId)];
+                delete store.trades[String(parseInt(interaction.channelId))];
                 store.save();
             } catch (err) {
                 console.log('Fehler beim Löschen/Loggen:', err.message);
@@ -214,6 +242,8 @@ async function handleVouchModal(interaction) {
         }, 5000);
 
         delete store.trades[interaction.channelId];
+        delete store.trades[String(interaction.channelId)];
+        delete store.trades[String(parseInt(interaction.channelId))];
         store.save();
     } else {
         await interaction.reply({

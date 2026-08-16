@@ -19,8 +19,12 @@ function loadData() {
         if (!data.trades) data.trades = {};
         if (!data.vouches) data.vouches = [];
         console.log('✅ Datenbank geladen:', Object.keys(data.trades).length, 'aktive Trades');
+        
+        // DEBUG: Zeige alle gespeicherten Trade-IDs
+        console.log('Stored Trade IDs:', Object.keys(data.trades));
     } catch (err) {
         console.error('❌ Fehler beim Laden:', err);
+        data = { tradeCounters: {}, trades: {}, vouches: [] };
     }
 }
 
@@ -29,6 +33,7 @@ function saveData() {
         const dir = path.dirname(DATA_FILE);
         if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
         fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+        console.log('💾 Datenbank gespeichert');
     } catch (err) {
         console.error('❌ Fehler beim Speichern:', err);
     }

@@ -11,6 +11,35 @@ const store = require('../data/store');
 const constants = require('../config/constants');
 const updateTradeMessage = require('../utils/updateTradeMessage');
 
+// === HELPER: Trade finden mit mehreren IDs ===
+function findTrade(channelId) {
+    // Versuche mehrere Varianten der Channel ID
+    const variants = [
+        channelId,
+        String(channelId),
+        String(parseInt(channelId)),
+        parseInt(channelId),
+        channelId.toString()
+    ];
+    
+    // Entferne Duplikate
+    const uniqueVariants = [...new Set(variants)];
+    
+    for (const variant of uniqueVariants) {
+        if (store.trades[variant]) {
+            console.log(`✅ Trade gefunden unter Key: "${variant}"`);
+            return store.trades[variant];
+        }
+    }
+    
+    // DEBUG: Zeige alle verfügbaren Keys
+    console.warn(`⚠️ Trade NICHT gefunden für Kanal-ID: "${channelId}"`);
+    console.warn(`Versuchte Keys:`, uniqueVariants);
+    console.warn(`Verfügbare Trade-Keys im Store:`, Object.keys(store.trades));
+    
+    return null;
+}
+
 // === TRADE LOGGING ===
 async function logTrade(interaction, trade, status) {
     const logChannel = interaction.guild.channels.cache.get(constants.LOG_CHANNEL_ID);
@@ -45,6 +74,8 @@ async function closeThreadAfterDelay(interaction, trade, delaySeconds) {
             await logTrade(interaction, trade, trade.cancelled ? '❌ ABGEBROCHEN' : '✅ ABGESCHLOSSEN');
             await interaction.channel.delete();
             delete store.trades[interaction.channelId];
+            delete store.trades[String(interaction.channelId)];
+            delete store.trades[String(parseInt(interaction.channelId))];
             store.save();
         } catch (err) {
             console.log('Fehler beim Löschen/Loggen:', err.message);
@@ -56,7 +87,7 @@ module.exports = async function handleButton(interaction) {
 
     // === CLAIM BUTTON ===
     if (interaction.customId === 'claim') {
-        const trade = store.trades[interaction.channelId];
+        const trade = findTrade(interaction.channelId);
 
         if (!trade) {
             console.error('[CLAIM ERROR] Trade nicht gefunden für Channel:', interaction.channelId);
@@ -94,7 +125,7 @@ module.exports = async function handleButton(interaction) {
 
     // === CLOSE BUTTON → Vouch-Phase ===
     if (interaction.customId === 'close') {
-        const trade = store.trades[interaction.channelId];
+        const trade = findTrade(interaction.channelId);
 
         if (!trade || !trade.claimedBy) {
             await interaction.reply({
@@ -159,7 +190,7 @@ module.exports = async function handleButton(interaction) {
 
     // === ABBRUCH BUTTON ===
     if (interaction.customId === 'abbruch') {
-        const trade = store.trades[interaction.channelId];
+        const trade = findTrade(interaction.channelId);
 
         if (!trade) {
             await interaction.reply({
