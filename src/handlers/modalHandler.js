@@ -93,7 +93,7 @@ module.exports = async function handleModal(interaction) {
         // === TRADER PING ===
         if (constants.TRADER_ROLE_ID) {
             await thread.send({
-                content: `<@&${constants.TRADER_ROLE_ID}> — Neuer Trade! 📢`
+                content: `<@&${constants.TRADER_ROLE_ID}> — Neuer Trade von \`${data.ingameName}\`! 📢`
             });
         }
 s
