@@ -118,7 +118,7 @@ client.on('interactionCreate', async (interaction) => {
                     .setCustomId('select_spawner:verkauf')
                     .setPlaceholder('Spawner auswählen...')
                     .addOptions([
-                        { label: '💀 Skeleton Spawner', description: 'Du bekommst: 8.0M', value: 'skeleton', emoji: '💀' },
+                        { label: '💀 Skeleton Spawner', description: 'Du bekommst: 8.0M', value: 'skeleton1', emoji: '💀' },
                         { label: '💥 Creeper Spawner', description: 'Du bekommst: 9.0M', value: 'creeper', emoji: '💥' }
                     ]);
 
@@ -199,7 +199,7 @@ client.on('interactionCreate', async (interaction) => {
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(
                         `## ${emoji} • Spawner ${action}\n\n` +
-                        `**Spieler:** <@${interaction.user.id}>\n` +
+                        `**Kunde:** <@${interaction.user.id}>\n` +
                         `**Ingame-Name:** \`${ingameName}\`\n` +
                         `**Spawner-Typ:** ${spawnerType}\n` +
                         `**Menge:** ${amount}\n\n` +
