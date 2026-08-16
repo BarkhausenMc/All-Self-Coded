@@ -10,9 +10,9 @@ const {
     SeparatorBuilder,
     MessageFlags,
     ChannelType,
-    ModalBuilder,        
-    TextInputBuilder,    
-    TextInputStyle        
+    ModalBuilder,
+    TextInputBuilder,
+    TextInputStyle
 } = require('discord.js');
 require('dotenv').config();
 
@@ -20,10 +20,22 @@ const client = new Client({
     intents: [GatewayIntentBits.Guilds]
 });
 
+// GLOBALE DATEN
 const tradeCounters = {};
 const trades = {};
 
+// PREIS- UND EMOJI-TABELLEN (global, nicht inside functions)
+const prices = {
+    Skeleton: { ankauf: 10.0, verkauf: 8.0 },
+    Creeper:  { ankauf: 10.0, verkauf: 9.0 }
+};
 
+const spawnerEmojis = {
+    Skeleton: '💀',
+    Creeper:  '💥'
+};
+
+// HELPER-FUNKTION
 function buildTradeContainer(data) {
     const claimText = data.claimedBy
         ? `🔒 Das Ticket wurde von <@${data.claimedBy}> geclaimt.`
@@ -65,7 +77,6 @@ client.once('ready', async () => {
 
     if (channel) {
         const container = new ContainerBuilder()
-            
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent('## 🛒 • SPAWNER TRADING • 💰\n*Yayks Spawner Tarding*')
             )
@@ -96,11 +107,11 @@ client.once('ready', async () => {
             )
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent('Klicke unten auf den `💰 VERKAUFEN` oder `🛒 ANKAUF` Button,\num einen Trade zu Starten.')
-            ); // <-- Klammer hier geschlossen!
+            );
 
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
-                .setCustomId('spawner_ankaufen') 
+                .setCustomId('spawner_ankaufen')
                 .setLabel('Spawner Kaufen')
                 .setStyle(ButtonStyle.Primary)
                 .setEmoji('🛒'),
@@ -122,8 +133,41 @@ client.once('ready', async () => {
 
 client.on('interactionCreate', async (interaction) => {
 
-    // --- 1. BUTTON → Select Menu öffnen ---
+    // --- 1. BUTTON HANDLER ---
     if (interaction.isButton()) {
+        
+        // Claim Button (separater Block)
+        if (interaction.customId === 'claim') {
+            const trade = trades[interaction.channelId];
+
+            if (!trade || trade.claimedBy) {
+                await interaction.reply({
+                    content: trade?.claimedBy
+                        ? `❌ Bereits von <@${trade.claimedBy}> geclaimt.`
+                        : '❌ Trade nicht gefunden.',
+                    flags: MessageFlags.Ephemeral
+                });
+                return;
+            }
+
+            trade.claimedBy = interaction.user.id;
+
+            const updatedContainer = buildTradeContainer(trade);
+
+            const msg = await interaction.channel.messages.fetch(trade.messageId);
+            await msg.edit({
+                components: [updatedContainer],
+                flags: MessageFlags.IsComponentsV2
+            });
+
+            await interaction.reply({
+                content: `✅ Du hast den Trade geclaimt!`,
+                flags: MessageFlags.Ephemeral
+            });
+            return;
+        }
+
+        // Spawner Trading Buttons
         switch (interaction.customId) {
             case 'spawner_ankaufen': {
                 const selectMenu = new StringSelectMenuBuilder()
@@ -178,10 +222,9 @@ client.on('interactionCreate', async (interaction) => {
     // --- 2. SELECT MENU → Modal öffnen ---
     if (interaction.isStringSelectMenu()) {
         if (interaction.customId.startsWith('select_spawner:')) {
-            const tradeType = interaction.customId.split(':')[1];  // 'ankauf' oder 'verkauf'
-            const spawnerType = interaction.values[0];              // 'skeleton' oder 'creeper'
+            const tradeType = interaction.customId.split(':')[1];
+            const spawnerType = interaction.values[0];
 
-            // tradeType + spawnerType in die Modal-customId packen
             const modal = new ModalBuilder()
                 .setCustomId(`trade_modal:${tradeType}:${spawnerType}`)
                 .setTitle(tradeType === 'ankauf' ? '🛒 Spawner Ankauf' : '💰 Spawner Verkauf');
@@ -212,9 +255,9 @@ client.on('interactionCreate', async (interaction) => {
     // --- 3. MODAL SUBMIT → Thread erstellen ---
     if (interaction.isModalSubmit()) {
         if (interaction.customId.startsWith('trade_modal:')) {
-            const parts = interaction.customId.split(':');        // ['trade_modal', 'ankauf', 'skeleton']
-            const tradeType = parts[1];                             // 'ankauf' oder 'verkauf'
-            const spawnerType = parts[2];                           // 'skeleton' oder 'creeper'
+            const parts = interaction.customId.split(':');
+            const tradeType = parts[1];
+            const spawnerType = parts[2];
             const ingameName = interaction.fields.getTextInputValue('ingame_name');
             const amount = interaction.fields.getTextInputValue('amount');
 
@@ -225,6 +268,9 @@ client.on('interactionCreate', async (interaction) => {
 
             const emoji = tradeType === 'ankauf' ? '🛒' : '💰';
             const action = tradeType === 'ankauf' ? 'Ankauf' : 'Verkauf';
+            const spawnerEmoji = spawnerEmojis[spawnerType] || '❌';
+            const pricePerUnit = prices[spawnerType][tradeType];
+            const totalPrice = pricePerUnit * parseInt(amount);
 
             const thread = await interaction.channel.threads.create({
                 name: `${emoji} ${action} - ${interaction.user.username}`,
@@ -234,106 +280,39 @@ client.on('interactionCreate', async (interaction) => {
 
             await thread.members.add(interaction.user.id);
 
-            // Preis-Tabelle (in Millionen)
-            const prices = {
-                Skeleton: { ankauf: 10.0, verkauf: 8.0 },
-                Creeper:  { ankauf: 10.0, verkauf: 9.0 }
+            const tradeData = {
+                claimedBy: null,
+                kundeId: interaction.user.id,
+                ingameName,
+                spawnerType,
+                spawnerEmoji,
+                amount,
+                pricePerUnit,
+                totalPrice,
+                handNummer,
+                emoji,
+                action
             };
-            const spawnerEmojis = {
-              Skeleton: '💀',
-              Creeper: '💥'
-            };
-            
-        // --- CLAIM BUTTON HANDLER ---
-    if (interaction.customId === 'claim') {
-    const trade = trades[interaction.channelId];
 
-    if (!trade || trade.claimedBy) {
-        await interaction.reply({
-            content: trade?.claimedBy 
-                ? `❌ Bereits von <@${trade.claimedBy}> geclaimt.`
-                : '❌ Trade nicht gefunden.',
-            flags: MessageFlags.Ephemeral
-        });
-        return;
-    }
+            const container = buildTradeContainer(tradeData);
 
-    // Nur claimedBy setzen
-    trade.claimedBy = interaction.user.id;
+            const claimRow = new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setCustomId('claim')
+                    .setLabel('Claim')
+                    .setStyle(ButtonStyle.Primary)
+                    .setEmoji('🙋‍♂️')
+            );
 
-    // Container neu bauen (automatisch mit geclaimt-Text)
-    const updatedContainer = buildTradeContainer(trade);
+            container.addActionRowComponents(claimRow);
 
-    // Original-Nachricht bearbeiten
-    const msg = await interaction.channel.messages.fetch(trade.messageId);
-    await msg.edit({
-        components: [updatedContainer],
-        flags: MessageFlags.IsComponentsV2
-    });
-
-    await interaction.reply({
-        content: `✅ Du hast den Trade geclaimt!`,
-        flags: MessageFlags.Ephemeral
-    });
-}
-const spawnerEmoji = spawnerEmojis[spawnerType] || '❌';
-            const pricePerUnit = prices[spawnerType][tradeType];
-            const totalPrice = pricePerUnit * parseInt(amount);
-
-const container = new ContainerBuilder()
-    .addTextDisplayComponents(
-        new TextDisplayBuilder().setContent(
-            `## ${emoji} • Spawner ${action}\n\n` +
-            `**🤝 • Handel #${handNummer}**`   
-        )
-    )
-    .addSeparatorComponents(
-        new SeparatorBuilder().setDivider(true).setSpacing(1)
-    )
-    .addTextDisplayComponents(
-        new TextDisplayBuilder().setContent(
-            `**👤 Kunde:** <@${interaction.user.id}>\n` +
-            `**🎮 ING:** \`${ingameName}\`\n` +
-            `**${spawnerEmoji} Spawner:** ${spawnerType}\n`
-        )
-    )
-    .addSeparatorComponents(
-        new SeparatorBuilder().setDivider(true).setSpacing(1)
-    )
-    .addTextDisplayComponents(
-        new TextDisplayBuilder().setContent(
-            `**📦 Menge:** ${amount}\n` +
-            `**💵 Preis/Stk:** ${pricePerUnit.toFixed(1)}M\n` +
-            `**💰 Gesamtpreis:** ${totalPrice.toFixed(1)}M`
-        )
-    )
-    .addSeparatorComponents(
-        new SeparatorBuilder().setDivider(true).setSpacing(1)
-    )
-    .addTextDisplayComponents(
-        new TextDisplayBuilder().setContent(
-            `🔓 Das Ticket wurde noch nicht geclaimt!`
-        )
-    );
-
-    const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId('claim') 
-                .setLabel('Claim')
-                .setStyle(ButtonStyle.Primary)
-                .setEmoji('🙋‍♂️'),
-    );
-
-            await thread.send({
+            const tradeMsg = await thread.send({
                 components: [container],
                 flags: MessageFlags.IsComponentsV2
             });
 
-            trades[thread.id] = {
-             messageId: tradeMsg.id,
-             emoji, action, ingameName, spawnerType, spawnerEmoji,
-             amount, pricePerUnit, totalPrice, handNummer
-            };
+            tradeData.messageId = tradeMsg.id;
+            trades[thread.id] = tradeData;
 
             await interaction.editReply({
                 components: [
