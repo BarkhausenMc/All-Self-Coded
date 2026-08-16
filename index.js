@@ -81,99 +81,109 @@ client.once('ready', async () => {
 });
 
 client.on('interactionCreate', async (interaction) => {
-    if (!interaction.isButton()) return;
 
-    switch (interaction.customId) {
-        case 'spawner_ankaufen':
-            await interaction.deferReply({ ephemeral: true });
+    if (interaction.isButton()) {
+        switch (interaction.customId) {
+            case 'spawner_ankaufen': {
+                await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-            const selectMenu = new StringSelectMenuBuilder()
-                .setCustomId('spawner_ankeuf_select')
-                .setLabel('Wähle einen Spawner')
-                .setPlaceholder('Spawner auswählen...')
-                .addOptions([
-                    {
-                        label: '💀 Skeleton Spawner',
-                        description: 'Ankaufpreis: 10.0M | Verkaufspreis: 8.0M',
-                        value: 'skeleton_spawner',
-                        emoji: '💀'
-                    },
-                    {
-                        label: '💥 Creeper Spawner',
-                        description: 'Ankaufpreis: 10.0M | Verkaufspreis: 9.0M',
-                        value: 'creeper_spawner',
-                        emoji: '💥'
-                    },
-                    {
-                        label: '🕸️ Spider Spawner',
-                        description: 'Ankaufpreis: 10.0M | Verkaufspreis: 8.5M',
-                        value: 'spider_spawner',
-                        emoji: '🕸️'
-                    }
-                ]);
+                const selectMenu = new StringSelectMenuBuilder()
+                    .setCustomId('spawner_ankauf_select')
+                    .setPlaceholder('Spawner auswählen...')
+                    .addOptions([
+                        {
+                            label: '💀 Skeleton Spawner',
+                            description: 'Preis: 10.0M',
+                            value: 'skeleton_spawner',
+                            emoji: '💀'
+                        },
+                        {
+                            label: '💥 Creeper Spawner',
+                            description: 'Preis: 10.0M',
+                            value: 'creeper_spawner',
+                            emoji: '💥'
+                        }
+                    ]);
 
-            const row = new ActionRowBuilder().addComponents(selectMenu);
+                const row = new ActionRowBuilder().addComponents(selectMenu);
 
-            await interaction.editReply({
-                content: '**🛒 Ankauf - Bitte wähle deinen Spawner:**',
-                components: [row]
-            });
-            break;
+                const container = new ContainerBuilder()
+                    .addTextDisplayComponents(
+                        new TextDisplayBuilder().setContent('## 🛒 • Spawner Ankauf\nWähle unten den Spawner, den du **kaufen** möchtest.')
+                    )
+                    .addActionRowComponents(row);
 
-        case 'spawner_verkaufen':
-            await interaction.deferReply({ ephemeral: true });
+                await interaction.editReply({
+                    components: [container],
+                    flags: MessageFlags.IsComponentsV2
+                });
+                break;
+            }
 
-            const selectMenuSell = new StringSelectMenuBuilder()
-                .setCustomId('spawner_verkauf_select')
-                .setLabel('Wähle einen Spawner zum Verkauf')
-                .setPlaceholder('Spawner auswählen...')
-                .addOptions([
-                    {
-                        label: '💀 Skeleton Spawner',
-                        description: 'Du bekommst: 8.0M',
-                        value: 'sell_skeleton',
-                        emoji: '💀'
-                    },
-                    {
-                        label: '💥 Creeper Spawner',
-                        description: 'Du bekommst: 9.0M',
-                        value: 'sell_creeper',
-                        emoji: '💥'
-                    },
-                    {
-                        label: '🕸️ Spider Spawner',
-                        description: 'Du bekommst: 8.5M',
-                        value: 'sell_spider',
-                        emoji: '🕸️'
-                    }
-                ]);
+            case 'spawner_verkaufen': {
+                await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-            const sellRow = new ActionRowBuilder().addComponents(selectMenuSell);
+                const selectMenu = new StringSelectMenuBuilder()
+                    .setCustomId('spawner_verkauf_select')
+                    .setPlaceholder('Spawner auswählen...')
+                    .addOptions([
+                        {
+                            label: '💀 Skeleton Spawner',
+                            description: 'Du bekommst: 8.0M',
+                            value: 'sell_skeleton',
+                            emoji: '💀'
+                        },
+                        {
+                            label: '💥 Creeper Spawner',
+                            description: 'Du bekommst: 9.0M',
+                            value: 'sell_creeper',
+                            emoji: '💥'
+                        }
+                    ]);
 
-            await interaction.editReply({
-                content: '**💰 Verkauf - Wähle deinen Spawner:**',
-                components: [sellRow]
-            });
-            break;
+                const row = new ActionRowBuilder().addComponents(selectMenu);
+
+                const container = new ContainerBuilder()
+                    .addTextDisplayComponents(
+                        new TextDisplayBuilder().setContent('## 💰 • Spawner Verkauf\nWähle unten den Spawner, den du **verkaufen** möchtest.')
+                    )
+                    .addActionRowComponents(row);
+
+                await interaction.editReply({
+                    components: [container],
+                    flags: MessageFlags.IsComponentsV2
+                });
+                break;
+            }
+        }
     }
 
-    // 👇 NEU: Select Menu Auswahl verarbeiten
     if (interaction.isStringSelectMenu()) {
-        if (interaction.customId === 'spawner_ankeuf_select') {
-            const selectedSpawner = interaction.values[0];
-            
-            await interaction.reply({
-                content: `✅ **${selectedSpawner}** ausgewählt! Worauf wartest du?`,
-                ephemeral: true
+        if (interaction.customId === 'spawner_ankauf_select') {
+            const selected = interaction.values[0];
+
+            await interaction.update({
+                components: [],
+                flags: MessageFlags.IsComponentsV2
+            });
+
+            await interaction.followUp({
+                content: `✅ Du hast **${selected}** zum Kauf ausgewählt!`,
+                flags: MessageFlags.Ephemeral
             });
         }
 
         if (interaction.customId === 'spawner_verkauf_select') {
-            const selectedSpawner = interaction.values[0];
-            
-            await interaction.reply({
-                content: `✅ Verkauf von **${selectedSpawner}** gestartet!`,
-                ephemeral: true
+            const selected = interaction.values[0];
+
+            await interaction.update({
+                components: [],
+                flags: MessageFlags.IsComponentsV2
+            });
+
+            await interaction.followUp({
+                content: `✅ Du hast **${selected}** zum Verkauf ausgewählt!`,
+                flags: MessageFlags.Ephemeral
             });
         }
     }
