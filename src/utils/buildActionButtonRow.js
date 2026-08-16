@@ -15,8 +15,8 @@ module.exports = function buildActionButtonRow(data) {
             new ButtonBuilder()
                 .setCustomId('abbruch')
                 .setLabel('Abbrechen')
-                .setStyle(ButtonStyle.Danger)
-                .setEmoji('❌')
+                .setStyle(ButtonStyle.Secondarys)
+                .setEmoji('🗑️')
         );
     } else {
         // Nicht geclaimt → [Claim] [Abbrechen]
@@ -29,8 +29,8 @@ module.exports = function buildActionButtonRow(data) {
             new ButtonBuilder()
                 .setCustomId('abbruch')
                 .setLabel('Abbrechen')
-                .setStyle(ButtonStyle.Danger)
-                .setEmoji('❌')
+                .setStyle(ButtonStyle.Secondary)
+                .setEmoji('🗑️')
         );
     }
 };
