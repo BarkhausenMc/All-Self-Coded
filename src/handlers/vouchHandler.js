@@ -6,20 +6,12 @@ const {
     ContainerBuilder,
     TextDisplayBuilder,
     SeparatorBuilder,
-    MessageFlags,
-    ChannelType
+    MessageFlags
 } = require('discord.js');
 
-const { trades, vouches } = require('../data/store');
 const store = require('../data/store');
 const constants = require('../config/constants');
-const buildTradeContainer = require('../utils/buildTradeContainer');
 const updateTradeMessage = require('../utils/updateTradeMessage');
-
-// Hilfsfunktion: Sterne als Unicode darstellen
-function starsToString(rating) {
-    return '⭐'.repeat(parseInt(rating));
-}
 
 // ==========================================
 // TEIL 1: Stern-Auswahl → Modal öffnen
@@ -27,7 +19,7 @@ function starsToString(rating) {
 async function handleVouchSelect(interaction) {
     if (interaction.customId !== 'vouch_stars') return;
 
-    const trade = trades[interaction.channelId];
+    const trade = store.trades[interaction.channelId];
 
     if (!trade || !trade.awaitingVouch) {
         await interaction.reply({
@@ -37,7 +29,6 @@ async function handleVouchSelect(interaction) {
         return;
     }
 
-    // Prüfen: Nur Kunde und Trader dürfen bewerten
     const isCustomer = interaction.user.id === trade.kundeId;
     const isTrader = interaction.user.id === trade.claimedBy;
 
@@ -49,8 +40,7 @@ async function handleVouchSelect(interaction) {
         return;
     }
 
-    // Prüfen: Schon bewertet?
-    if (trade.vouches && trade.vouches.includes(interaction.user.id)) {
+    if (trade.vouches && trade.vouches.some(v => v.reviewerId === interaction.user.id)) {
         await interaction.reply({
             content: '✅ Du hast bereits bewertet!',
             flags: MessageFlags.Ephemeral
@@ -58,9 +48,8 @@ async function handleVouchSelect(interaction) {
         return;
     }
 
-    const stars = interaction.values[0]; // '1' bis '5'
+    const stars = interaction.values[0];
 
-    // Modal für Bewertungstext öffnen
     const modal = new ModalBuilder()
         .setCustomId(`vouch_modal:${stars}`)
         .setTitle(`📝 Bewertung — ${stars} Sterne`);
@@ -78,14 +67,14 @@ async function handleVouchSelect(interaction) {
 }
 
 // ==========================================
-// TEIL 2: Modal Submit → Vouch speichern
+// TEIL 2: Modal Submit → Vouch speichern & posten
 // ==========================================
 async function handleVouchModal(interaction) {
     if (!interaction.customId.startsWith('vouch_modal:')) return;
 
-    const stars = parseInt(interaction.customId.split(':')[1]); // z.B. 5
+    const stars = parseInt(interaction.customId.split(':')[1]);
     const text = interaction.fields.getTextInputValue('vouch_text') || '*Kein Text*';
-    const trade = trades[interaction.channelId];
+    const trade = store.trades[interaction.channelId];
 
     if (!trade || !trade.awaitingVouch) {
         await interaction.reply({
@@ -95,91 +84,110 @@ async function handleVouchModal(interaction) {
         return;
     }
 
-    // Schon bewertet?
-    if (trade.vouches && trade.vouches.includes(interaction.user.id)) {
+    if (trade.vouches && trade.vouches.some(v => v.reviewerId === interaction.user.id)) {
         await interaction.reply({
-            content: '✅ Du hast bereits bewertet!',
+            content: '✅ Du hat bereits bewertet!',
             flags: MessageFlags.Ephemeral
         });
         return;
     }
 
-    // Wer bewertet wen?
     const reviewerId = interaction.user.id;
     const reviewedId = (reviewerId === trade.kundeId) ? trade.claimedBy : trade.kundeId;
 
-    // Vouch-Daten speichern
-    const vouchData = {
+    // Vouch-Daten zum Trade hinzufügen
+    const vouchEntry = {
         reviewerId,
         reviewedId,
         rating: stars,
         text,
-        tradeInfo: {
-            emoji: trade.emoji,
-            action: trade.action,
-            spawnerType: trade.spawnerType,
-            spawnerEmoji: trade.spawnerEmoji,
-            amount: trade.amount,
-            totalPrice: trade.totalPrice,
-            handNummer: trade.handNummer
-        },
         timestamp: new Date().toISOString()
     };
 
-    vouches.push(vouchData);
+    if (!trade.vouchEntries) trade.vouchEntries = [];
+    trade.vouchEntries.push(vouchEntry);
 
     // User als bewertet markieren
     if (!trade.vouches) trade.vouches = [];
     trade.vouches.push(reviewerId);
     store.save();
 
-    // Vouch im Vouch-Channel posten
-    const vouchChannel = interaction.guild.channels.cache.get(constants.VOUCH_CHANNEL_ID);
+    // Prüfen: Haben beide bewertet?
+    if (trade.vouches.length >= 2) {
+        // === EINE gemeinsame Vouch-Nachricht bauen ===
 
-    if (vouchChannel) {
+        const vouch1 = trade.vouchEntries[0];
+        const vouch2 = trade.vouchEntries[1];
+
+        // Sterne als Unicode
+        const stars1 = '⭐'.repeat(vouch1.rating);
+        const stars2 = '⭐'.repeat(vouch2.rating);
+
+        // Wer hat wen bewertet?
+        const customerVouch = vouch1.reviewerId === trade.kundeId ? vouch1 : vouch2;
+        const traderVouch = vouch1.reviewerId === trade.claimedBy ? vouch1 : vouch2;
+
         const vouchContainer = new ContainerBuilder()
+            // --- Header: Handel # ---
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
-                    `## ${starsToString(stars)} • ${stars}/5 Sterne\n\n` +
-                    `> ${text}`
+                    `## ${trade.emoji} • Handel #${trade.handNummer}\n\n` +
+                    `**${trade.emoji} Aktion:** ${trade.action}\n` +
+                    `**${trade.spawnerEmoji} Spawner:** ${trade.spawnerType}\n` +
+                    `**📦 Menge:** ${trade.amount}\n` +
+                    `**💰 Gesamtpreis:** ${trade.totalPrice.toFixed(1)}M\n\n` +
+                    `**👤 Kunde:** <@${trade.kundeId}>\n` +
+                    `**🤝 Trader:** <@${trade.claimedBy}>`
                 )
             )
             .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
+            // --- Bewertung Kunde ---
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
-                    `**👤 Bewertet von:** <@${reviewerId}>\n` +
-                    `**🎯 Bewertet:** <@${reviewedId}>\n` +
-                    `**${trade.spawnerEmoji} Trade:** ${trade.emoji} ${trade.action} ${trade.spawnerType} (#${trade.handNummer}) • ${trade.amount}x • ${trade.totalPrice.toFixed(1)}M`
+                    `### 📝 Bewertung von Kunde → Trader\n` +
+                    `${stars1} (${customerVouch.rating}/5)\n` +
+                    `> ${customerVouch.text}`
+                )
+            )
+            .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
+            // --- Bewertung Trader ---
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(
+                    `### 📝 Bewertung von Trader → Kunde\n` +
+                    `${stars2} (${traderVouch.rating}/5)\n` +
+                    `> ${traderVouch.text}`
                 )
             );
 
-        await vouchChannel.send({
-            components: [vouchContainer],
-            flags: MessageFlags.IsComponentsV2
-        });
-    } else {
-        console.log('Vouch-Channel nicht gefunden!');
-    }
+        // Vouch im Vouch-Channel posten
+        const vouchChannel = interaction.guild.channels.cache.get(constants.VOUCH_CHANNEL_ID);
 
-    // Prüfen: Haben beide bewertet?
-    if (trade.vouches.length >= 2) {
-        // Trade vollständig abschließen
+        if (vouchChannel) {
+            await vouchChannel.send({
+                components: [vouchContainer],
+                flags: MessageFlags.IsComponentsV2
+            });
+        } else {
+            console.log('Vouch-Channel nicht gefunden!');
+        }
+
+        // Trade abschließen
         trade.awaitingVouch = false;
         trade.closed = true;
         store.save();
 
-        // Original-Nachricht aktualisieren
+        // Original-Nachricht im Thread aktualisieren
         await updateTradeMessage(interaction.channel, trade);
 
         // Thread archivieren
         await interaction.channel.setArchived(true);
 
         // Aus Speicher entfernen
-        delete trades[interaction.channelId];
+        delete store.trades[interaction.channelId];
         store.save();
 
         await interaction.reply({
-            content: `✅ Danke für deine Bewertung! Beide haben bewertet — Trade abgeschlossen!`,
+            content: `✅ Beide haben bewertet! Trade abgeschlossen und im Vouch-Channel gepostet.`,
             flags: MessageFlags.Ephemeral
         });
     } else {
