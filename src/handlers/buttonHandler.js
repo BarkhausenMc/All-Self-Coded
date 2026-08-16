@@ -1,14 +1,28 @@
-const { ActionRowBuilder, StringSelectMenuBuilder, ContainerBuilder, TextDisplayBuilder, MessageFlags } = require('discord.js');
-const { trades } = require('../data/store');
+const { ActionRowBuilder, StringSelectMenuBuilder, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, MessageFlags } = require('discord.js');
 const store = require('../data/store');
+const { trades } = store;
 const constants = require('../config/constants');
 const updateTradeMessage = require('../utils/updateTradeMessage');
 const buildTradeContainer = require('../utils/buildTradeContainer');
 
+// Hilfsfunktion: Thread nach X Sekunden schließen
+async function closeThreadAfterDelay(channel, delaySeconds) {
+    setTimeout(async () => {
+        try {
+            // Locken (niemand kann mehr schreiben)
+            await channel.setLocked(true);
+            // Archivieren
+            await channel.setArchived(true);
+        } catch (err) {
+            // Ignorieren — Thread vielleicht schon weg
+        }
+    }, delaySeconds * 1000);
+}
+
 module.exports = async function handleButton(interaction) {
 
     // ==========================================
-    // CLAIM BUTTON
+    // CLAIM BUTTON (nur Trader)
     // ==========================================
     if (interaction.customId === 'claim') {
         const trade = store.trades[interaction.channelId];
@@ -26,11 +40,11 @@ module.exports = async function handleButton(interaction) {
             return;
         }
 
-        // Nur Trader dürfen claimen (Role Check)
-        const traderRoleId = process.env.TRADER_ROLE_ID;
+        // Nur Trader dürfen claimen
+        const traderRoleId = constants.TRADER_ROLE_ID;
         if (!interaction.member.roles.cache.has(traderRoleId)) {
             await interaction.reply({
-                content: '❌ Nur Mitglieder mit der "Trader" Rolle dürfen Trades claimen.',
+                content: '❌ Nur Mitglieder mit der Trader-Rolle dürfen Trades claimen.',
                 flags: MessageFlags.Ephemeral
             });
             return;
@@ -52,7 +66,7 @@ module.exports = async function handleButton(interaction) {
     // CLOSE BUTTON → Startet Vouch-Phase
     // ==========================================
     if (interaction.customId === 'close') {
-        const trade = trades[interaction.channelId];
+        const trade = store.trades[interaction.channelId];
 
         if (!trade || !trade.claimedBy) {
             await interaction.reply({
@@ -70,12 +84,11 @@ module.exports = async function handleButton(interaction) {
             return;
         }
 
-        // Trade in Vouch-Phase setzen
         trade.awaitingVouch = true;
         trade.vouches = [];
+        trade.vouchEntries = [];
         store.save();
 
-        // Original-Nachricht aktualisieren (keine Buttons, "Warte auf Bewertungen")
         await updateTradeMessage(interaction.channel, trade);
 
         // Vouch-Nachricht mit Stern-Auswahl senden
@@ -118,10 +131,10 @@ module.exports = async function handleButton(interaction) {
     }
 
     // ==========================================
-    // ABBRUCH BUTTON
+    // ABBRUCH BUTTON → 5 Sek Countdown
     // ==========================================
     if (interaction.customId === 'abbruch') {
-        const trade = trades[interaction.channelId];
+        const trade = store.trades[interaction.channelId];
 
         if (!trade) {
             await interaction.reply({
@@ -135,15 +148,22 @@ module.exports = async function handleButton(interaction) {
         store.save();
 
         await updateTradeMessage(interaction.channel, trade);
-        await interaction.channel.setArchived(true);
 
-        delete trades[interaction.channelId];
-        store.save();
+        // Countdown-Nachricht senden
+        await interaction.channel.send({
+            content: `⏳ Dieses Ticket wird in **5 Sekunden** geschlossen...`,
+        });
 
         await interaction.reply({
-            content: `❌ Trade wurde abgebrochen und der Thread archiviert.`,
+            content: `❌ Trade wurde abgebrochen. Ticket schließt in 5 Sekunden.`,
             flags: MessageFlags.Ephemeral
         });
+
+        // Nach 5 Sekunden archivieren
+        closeThreadAfterDelay(interaction.channel, 5);
+
+        delete store.trades[interaction.channelId];
+        store.save();
         return;
     }
 

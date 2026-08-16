@@ -4,6 +4,7 @@ const {
     ButtonStyle,
     ContainerBuilder,
     TextDisplayBuilder,
+    SeparatorBuilder,
     MessageFlags,
     ChannelType
 } = require('discord.js');
@@ -23,9 +24,18 @@ module.exports = async function handleModal(interaction) {
         const ingameName = interaction.fields.getTextInputValue('ingame_name');
         const amount = interaction.fields.getTextInputValue('amount');
 
+        // === MENGEN-VALIDIERUNG ===
+        const parsedAmount = parseInt(amount);
+        if (isNaN(parsedAmount) || parsedAmount <= 0) {
+            await interaction.reply({
+                content: '❌ Bitte gib eine gültige Anzahl ein (z.B. 3)!',
+                flags: MessageFlags.Ephemeral
+            });
+            return;
+        }
+
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-        // Counter hochzählen und speichern
         tradeCounters[interaction.user.id] = (tradeCounters[interaction.user.id] || 0) + 1;
         const handNummer = tradeCounters[interaction.user.id];
         store.save();
@@ -34,7 +44,7 @@ module.exports = async function handleModal(interaction) {
         const action = tradeType === 'ankauf' ? 'Ankauf' : 'Verkauf';
         const spawnerEmoji = constants.spawnerEmojis[spawnerType] || '❌';
         const pricePerUnit = constants.prices[spawnerType][tradeType];
-        const totalPrice = pricePerUnit * parseInt(amount);
+        const totalPrice = pricePerUnit * parsedAmount;
 
         // Thread erstellen
         const thread = await interaction.channel.threads.create({
@@ -45,7 +55,7 @@ module.exports = async function handleModal(interaction) {
 
         await thread.members.add(interaction.user.id);
 
-        // Trader-Rolle einladen
+        // Trader-Rolle einladen (ohne Console Spam)
         if (constants.TRADER_ROLE_ID) {
             try {
                 const allMembers = await interaction.guild.members.fetch();
@@ -54,12 +64,10 @@ module.exports = async function handleModal(interaction) {
                     await thread.members.add(trader.id).catch(() => {});
                 }
             } catch (err) {
-                // Rate-Limiting oder andere Fehler ruhig ignorieren
-                // console.log('Konnte Trader nicht hinzufügen:', err.message);  // <-- AUSKOMMENTIERN
+                // Silent fail — kein Console Log
             }
         }
 
-        // Trade-Daten
         const tradeData = {
             messageId: null,
             claimedBy: null,
@@ -67,11 +75,12 @@ module.exports = async function handleModal(interaction) {
             cancelled: false,
             awaitingVouch: false,
             vouches: [],
+            vouchEntries: [],
             kundeId: interaction.user.id,
             ingameName,
             spawnerType,
             spawnerEmoji,
-            amount,
+            amount: parsedAmount,
             pricePerUnit,
             totalPrice,
             handNummer,
@@ -86,6 +95,13 @@ module.exports = async function handleModal(interaction) {
             components: [container, actionRow],
             flags: MessageFlags.IsComponentsV2
         });
+
+        // === TRADER ROLE PING ===
+        if (constants.TRADER_ROLE_ID) {
+            await thread.send({
+                content: `<@&${constants.TRADER_ROLE_ID}> — Neuer Trade! 📢`
+            });
+        }
 
         tradeData.messageId = tradeMsg.id;
         trades[thread.id] = tradeData;

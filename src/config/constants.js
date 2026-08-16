@@ -1,6 +1,6 @@
 module.exports = {
     prices: {
-        Skeleton: { ankauf: 10.0, verkauf: 8.0 },
+        Skeleton: { ankauf: 10.0, verkauf: 'Stop' },
         Creeper:  { ankauf: 10.0, verkauf: 9.0 }
     },
 

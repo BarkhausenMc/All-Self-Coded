@@ -1,121 +1,4 @@
-const {
-    ActionRowBuilder,
-    ModalBuilder,
-    TextInputBuilder,
-    TextInputStyle,
-    ContainerBuilder,
-    TextDisplayBuilder,
-    SeparatorBuilder,
-    MessageFlags
-} = require('discord.js');
-
-const store = require('../data/store');
-const constants = require('../config/constants');
-const updateTradeMessage = require('../utils/updateTradeMessage');
-
-// ==========================================
-// TEIL 1: Stern-Auswahl → Modal öffnen
-// ==========================================
-async function handleVouchSelect(interaction) {
-    if (interaction.customId !== 'vouch_stars') return;
-
-    const trade = store.trades[interaction.channelId];
-
-    if (!trade || !trade.awaitingVouch) {
-        await interaction.reply({
-            content: '❌ Dieser Trade ist nicht in der Bewertungsphase.',
-            flags: MessageFlags.Ephemeral
-        });
-        return;
-    }
-
-    const isCustomer = interaction.user.id === trade.kundeId;
-    const isTrader = interaction.user.id === trade.claimedBy;
-
-    if (!isCustomer && !isTrader) {
-        await interaction.reply({
-            content: '❌ Du bist nicht Teil dieses Trades.',
-            flags: MessageFlags.Ephemeral
-        });
-        return;
-    }
-
-    if (trade.vouches && trade.vouches.some(v => v.reviewerId === interaction.user.id)) {
-        await interaction.reply({
-            content: '✅ Du hast bereits bewertet!',
-            flags: MessageFlags.Ephemeral
-        });
-        return;
-    }
-
-    const stars = interaction.values[0];
-
-    const modal = new ModalBuilder()
-        .setCustomId(`vouch_modal:${stars}`)
-        .setTitle(`📝 Bewertung — ${stars} Sterne`);
-
-    const textInput = new TextInputBuilder()
-        .setCustomId('vouch_text')
-        .setLabel('Schreibe deine Bewertung (optional)')
-        .setStyle(TextInputStyle.Paragraph)
-        .setPlaceholder('z.B. Sehr schneller und fairer Trade!')
-        .setRequired(false);
-
-    modal.addComponents(new ActionRowBuilder().addComponents(textInput));
-
-    await interaction.showModal(modal);
-}
-
-// ==========================================
-// TEIL 2: Modal Submit → Vouch speichern & posten
-// ==========================================
-async function handleVouchModal(interaction) {
-    if (!interaction.customId.startsWith('vouch_modal:')) return;
-
-    const stars = parseInt(interaction.customId.split(':')[1]);
-    const text = interaction.fields.getTextInputValue('vouch_text') || '*Kein Text*';
-    const trade = store.trades[interaction.channelId];
-
-    if (!trade || !trade.awaitingVouch) {
-        await interaction.reply({
-            content: '❌ Dieser Trade ist nicht mehr in der Bewertungsphase.',
-            flags: MessageFlags.Ephemeral
-        });
-        return;
-    }
-
-    if (trade.vouches && trade.vouches.some(v => v.reviewerId === interaction.user.id)) {
-        await interaction.reply({
-            content: '✅ Du hat bereits bewertet!',
-            flags: MessageFlags.Ephemeral
-        });
-        return;
-    }
-
-    const reviewerId = interaction.user.id;
-    const reviewedId = (reviewerId === trade.kundeId) ? trade.claimedBy : trade.kundeId;
-
-    // Vouch-Daten zum Trade hinzufügen
-    const vouchEntry = {
-        reviewerId,
-        reviewedId,
-        rating: stars,
-        text,
-        timestamp: new Date().toISOString()
-    };
-
-    if (!trade.vouchEntries) trade.vouchEntries = [];
-    trade.vouchEntries.push(vouchEntry);
-
-    // User als bewertet markieren
-    if (!trade.vouches) trade.vouches = [];
-    trade.vouches.push(reviewerId);
-    store.save();
-
-        // Prüfen: Haben beide bewertet?
     if (trade.vouches.length >= 2) {
-        // === EINE gemeinsame Vouch-Nachricht bauen ===
-
         const vouch1 = trade.vouchEntries[0];
         const vouch2 = trade.vouchEntries[1];
 
@@ -155,7 +38,6 @@ async function handleVouchModal(interaction) {
             );
 
         const vouchChannel = interaction.guild.channels.cache.get(constants.VOUCH_CHANNEL_ID);
-
         if (vouchChannel) {
             await vouchChannel.send({
                 components: [vouchContainer],
@@ -168,32 +50,41 @@ async function handleVouchModal(interaction) {
         trade.closed = true;
         store.save();
 
-        // ORIGINAL-NACHRICHT ZUERST aktualisieren (BEVOR Thread archiviert wird!)
+        // Original-Nachricht aktualisieren (vor Archivierung!)
         try {
-            await updateTradeMessage(interaction.channel, trade);
+            const container = buildTradeContainer(trade);
+            const msg = await interaction.channel.messages.fetch(trade.messageId);
+            await msg.edit({ components: [container], flags: MessageFlags.IsComponentsV2 });
         } catch (err) {
-            // Thread vielleicht schon archiviert — ignoriere
+            // Thread vielleicht schon weg
         }
 
-        // ERST DANN archivieren
-        await interaction.channel.setArchived(true);
+        // 5 Sekunden Countdown
+        await interaction.channel.send({
+            content: `⏳ Dieses Ticket wird in **5 Sekunden** geschlossen...`,
+        });
 
-        // Aus Speicher entfernen
-        delete store.trades[interaction.channelId];
-        store.save();
-
-        // REPLYS NACH dem Archivieren
+        // Reply BEVOR der Thread schließt
         await interaction.reply({
             content: `✅ Beide haben bewertet! Trade abgeschlossen und im Vouch-Channel gepostet.`,
             flags: MessageFlags.Ephemeral
         });
+
+        // Nach 5 Sekunden locken + archivieren
+        setTimeout(async () => {
+            try {
+                await interaction.channel.setLocked(true);
+                await interaction.channel.setArchived(true);
+            } catch (err) {
+                // Ignorieren
+            }
+        }, 5000);
+
+        delete store.trades[interaction.channelId];
+        store.save();
     } else {
-        // Erst eine Person hat bewertet
         await interaction.reply({
             content: `✅ Danke für deine Bewertung! (${trade.vouches.length}/2)\nWarte noch auf den anderen Trade-Partner.`,
             flags: MessageFlags.Ephemeral
         });
     }
-}
-
-module.exports = { handleVouchSelect, handleVouchModal };

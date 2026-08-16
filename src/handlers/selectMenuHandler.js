@@ -1,10 +1,31 @@
-const { ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+const { ActionRowBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags } = require('discord.js');
+const constants = require('../config/constants');
 
 module.exports = async function handleSelectMenu(interaction) {
     if (interaction.customId.startsWith('select_spawner:')) {
         const tradeType = interaction.customId.split(':')[1];
         const spawnerType = interaction.values[0];
 
+        // === STOP-PRÜFUNG ===
+        const price = constants.prices[spawnerType]?.[tradeType];
+        if (price === 'Stop' || price === undefined) {
+            await interaction.update({
+                components: [
+                    new ContainerBuilder()
+                        .addTextDisplayComponents(
+                            new TextDisplayBuilder().setContent(
+                                `## ❌ • Nicht verfügbar\n\n` +
+                                `**${spawnerType}** (${tradeType}) ist aktuell gesperrt.\n` +
+                                `Bitte versuche es später erneut oder wähle einen anderen Spawner.`
+                            )
+                        )
+                ],
+                flags: MessageFlags.IsComponentsV2
+            });
+            return;
+        }
+
+        // Modal bauen
         const modal = new ModalBuilder()
             .setCustomId(`trade_modal:${tradeType}:${spawnerType}`)
             .setTitle(tradeType === 'ankauf' ? '🛒 Spawner Ankauf' : '💰 Spawner Verkauf');
