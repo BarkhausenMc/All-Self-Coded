@@ -93,32 +93,27 @@ client.once('ready', async () => {
 // ==========================================
 client.on('interactionCreate', async (interaction) => {
     try {
-        // Vouch Select Menu → vouchHandler
         if (interaction.isStringSelectMenu() && interaction.customId === 'vouch_stars') {
             await handleVouchSelect(interaction);
-        }
-        // Vouch Modal → vouchHandler
-        else if (interaction.isModalSubmit() && interaction.customId.startsWith('vouch_modal:')) {
+        } else if (interaction.isModalSubmit() && interaction.customId.startsWith('vouch_modal:')) {
             await handleVouchModal(interaction);
-        }
-        // Normale Buttons → buttonHandler
-        else if (interaction.isButton()) {
+        } else if (interaction.isButton()) {
             await handleButton(interaction);
-        }
-        // Normales Select Menu → selectMenuHandler
-        else if (interaction.isStringSelectMenu()) {
+        } else if (interaction.isStringSelectMenu()) {
             await handleSelectMenu(interaction);
-        }
-        // Normales Modal → modalHandler
-        else if (interaction.isModalSubmit()) {
+        } else if (interaction.isModalSubmit()) {
             await handleModal(interaction);
         }
     } catch (error) {
         console.error('Fehler bei Interaction:', error);
+        
+        // NUR wenn noch NICHT geantwortet wurde
         if (!interaction.replied && !interaction.deferred) {
-            await interaction.reply({ content: '❌ Ein Fehler ist aufgetreten.', flags: MessageFlags.Ephemeral }).catch(() => {});
+            await interaction.reply({
+                content: '❌ Ein Fehler ist aufgetreten.',
+                flags: MessageFlags.Ephemeral
+            }).catch(() => {});
         }
     }
 });
-
 client.login(process.env.DISCORD_TOKEN);

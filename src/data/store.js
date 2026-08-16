@@ -1,10 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 
-// Pfad zur JSON-Datenbank
 const DATA_FILE = path.join(__dirname, '../../data/database.json');
 
-// Standard-Datenstruktur
 let data = {
     tradeCounters: {},
     trades: {},
@@ -21,29 +19,28 @@ function loadData() {
         if (!data.trades) data.trades = {};
         if (!data.vouches) data.vouches = [];
     } catch (err) {
-        console.error('Fehler beim Laden der Datenbank:', err);
+        console.error('Fehler beim Laden:', err);
     }
 }
 
 function saveData() {
     try {
         const dir = path.dirname(DATA_FILE);
-        if (!fs.existsSync(dir)) {
-            fs.mkdirSync(dir, { recursive: true });
-        }
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
         fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
     } catch (err) {
-        console.error('Fehler beim Speichern der Datenbank:', err);
+        console.error('Fehler beim Speichern:', err);
     }
 }
 
-// Beim Start laden
 loadData();
 
+// EXPORTE DIREKT (keine Getter!)
 module.exports = {
-    get tradeCounters() { return data.tradeCounters; },
-    get trades() { return data.trades; },
-    get vouches() { return data.vouches; },
+    tradeCounters: data.tradeCounters,
+    trades: data.trades,
+    vouches: data.vouches,
+    data: data,
     save: saveData,
     reload: loadData
 };
