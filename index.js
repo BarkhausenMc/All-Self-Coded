@@ -17,11 +17,46 @@ const {
 require('dotenv').config();
 
 const client = new Client({
-    intents: [
-        GatewayIntentBits.Guilds
-    ]
+    intents: [GatewayIntentBits.Guilds]
 });
+
 const tradeCounters = {};
+const trades = {};
+
+
+function buildTradeContainer(data) {
+    const claimText = data.claimedBy
+        ? `🔒 Das Ticket wurde von <@${data.claimedBy}> geclaimt.`
+        : `🔓 Das Ticket wurde noch nicht geclaimt!`;
+
+    return new ContainerBuilder()
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+                `## ${data.emoji} • Spawner ${data.action}\n\n` +
+                `**🤝 • Handel #${data.handNummer}**`
+            )
+        )
+        .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+                `**👤 Kunde:** <@${data.kundeId}>\n` +
+                `**🎮 ING:** \`${data.ingameName}\`\n` +
+                `**${data.spawnerEmoji} Spawner:** ${data.spawnerType}\n`
+            )
+        )
+        .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+                `**📦 Menge:** ${data.amount}\n` +
+                `**💵 Preis/Stk:** ${data.pricePerUnit.toFixed(1)}M\n` +
+                `**💰 Gesamtpreis:** ${data.totalPrice.toFixed(1)}M`
+            )
+        )
+        .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(claimText)
+        );
+}
 
 client.once('ready', async () => {
     console.log('Bot ist online!');
@@ -65,7 +100,7 @@ client.once('ready', async () => {
 
         const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder()
-                .setCustomId('spawner_ankaufen') // ⚠️ HIER KORRIGIERT!
+                .setCustomId('spawner_ankaufen') 
                 .setLabel('Spawner Kaufen')
                 .setStyle(ButtonStyle.Primary)
                 .setEmoji('🛒'),
@@ -209,7 +244,38 @@ client.on('interactionCreate', async (interaction) => {
               Creeper: '💥'
             };
             
+        // --- CLAIM BUTTON HANDLER ---
+    if (interaction.customId === 'claim') {
+    const trade = trades[interaction.channelId];
 
+    if (!trade || trade.claimedBy) {
+        await interaction.reply({
+            content: trade?.claimedBy 
+                ? `❌ Bereits von <@${trade.claimedBy}> geclaimt.`
+                : '❌ Trade nicht gefunden.',
+            flags: MessageFlags.Ephemeral
+        });
+        return;
+    }
+
+    // Nur claimedBy setzen
+    trade.claimedBy = interaction.user.id;
+
+    // Container neu bauen (automatisch mit geclaimt-Text)
+    const updatedContainer = buildTradeContainer(trade);
+
+    // Original-Nachricht bearbeiten
+    const msg = await interaction.channel.messages.fetch(trade.messageId);
+    await msg.edit({
+        components: [updatedContainer],
+        flags: MessageFlags.IsComponentsV2
+    });
+
+    await interaction.reply({
+        content: `✅ Du hast den Trade geclaimt!`,
+        flags: MessageFlags.Ephemeral
+    });
+}
 const spawnerEmoji = spawnerEmojis[spawnerType] || '❌';
             const pricePerUnit = prices[spawnerType][tradeType];
             const totalPrice = pricePerUnit * parseInt(amount);
@@ -217,8 +283,8 @@ const spawnerEmoji = spawnerEmojis[spawnerType] || '❌';
 const container = new ContainerBuilder()
     .addTextDisplayComponents(
         new TextDisplayBuilder().setContent(
-            `## ${emoji} • Spawner ${action}\n\n` +
-            `**🤝 • Handel #${handNummer}**`   // ← Handlungszahl im Header
+            `## ${emoji} • Spawner ${action}\n\n` 
+            `**🤝 • Handel #${handNummer}**`   
         )
     )
     .addSeparatorComponents(
@@ -246,20 +312,28 @@ const container = new ContainerBuilder()
     )
     .addTextDisplayComponents(
         new TextDisplayBuilder().setContent(
-            `## ℹ • Nächste Schritte\n\n` +
-            `Dieser Trade wurde angemeldet und steht nun in <#${thread.id}>.\n\n` +
-            `**Was passiert jetzt?**\n` +
-            `• Ein Staff-Mitglied wird den Trade prüfen\n` +
-            `• Du erhältst eine Benachrichtigung im Thread\n` +
-            `• Bitte bleib online für Rückfragen\n\n` +
-            `Danke für dein Vertrauen! 🙏`   // ← Claim-Text / Info
+         //hier text ob ticket geclaimt oder nicht   
         )
+    );
+
+    const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId('claim') 
+                .setLabel('Claim')
+                .setStyle(ButtonStyle.Primary)
+                .setEmoji('🙋‍♂️'),
     );
 
             await thread.send({
                 components: [container],
                 flags: MessageFlags.IsComponentsV2
             });
+
+            trades[thread.id] = {
+             messageId: tradeMsg.id,
+             emoji, action, ingameName, spawnerType, spawnerEmoji,
+             amount, pricePerUnit, totalPrice, handNummer
+            };
 
             await interaction.editReply({
                 components: [
