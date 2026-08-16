@@ -1,12 +1,14 @@
 const { ContainerBuilder, TextDisplayBuilder, SeparatorBuilder } = require('discord.js');
 
 module.exports = function buildTradeContainer(data) {
-    // Status-Text dynamisch bestimmen je nach Trade-Zustand
     let statusText;
     if (data.cancelled) {
         statusText = `❌ **Trade abgebrochen!**`;
     } else if (data.closed) {
         statusText = `✅ **Trade abgeschlossen!**`;
+    } else if (data.awaitingVouch) {
+        const vouchCount = (data.vouches || []).length;
+        statusText = `⏳ **Warte auf Bewertungen (${vouchCount}/2)**\n\nBitte bewertet euch gegenseitig im Thread!`;
     } else if (data.claimedBy) {
         statusText = `🔒 Das Ticket wurde von <@${data.claimedBy}> geclaimt.`;
     } else {
@@ -14,16 +16,13 @@ module.exports = function buildTradeContainer(data) {
     }
 
     return new ContainerBuilder()
-        // --- Header: Emoji + Aktion + Handelsnummer ---
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(
                 `## ${data.emoji} • Spawner ${data.action}\n\n` +
                 `**🤝 • Handel #${data.handNummer}**`
             )
         )
-        // --- Trennlinie ---
         .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
-        // --- Kunden-Info Block ---
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(
                 `**👤 Kunde:** <@${data.kundeId}>\n` +
@@ -31,9 +30,7 @@ module.exports = function buildTradeContainer(data) {
                 `**${data.spawnerEmoji} Spawner:** ${data.spawnerType}\n`
             )
         )
-        // --- Trennlinie ---
         .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
-        // --- Preis-Info Block ---
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(
                 `**📦 Menge:** ${data.amount}\n` +
@@ -41,9 +38,7 @@ module.exports = function buildTradeContainer(data) {
                 `**💰 Gesamtpreis:** ${data.totalPrice.toFixed(1)}M`
             )
         )
-        // --- Trennlinie ---
         .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
-        // --- Status-Text (dynamisch) ---
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(statusText)
         );

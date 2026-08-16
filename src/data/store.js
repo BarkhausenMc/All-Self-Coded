@@ -1,9 +1,49 @@
-// Globale Speicher für Trades und Counter
-// ACHTUNG: Diese Daten sind nur im RAM (Arbeitsspeicher)
-// Bei einem Bot-Neustart gehen alle Daten verloren!
-// Für Produktion: durch SQLite ersetzen.
+const fs = require('fs');
+const path = require('path');
 
-const tradeCounters = {};  // userId -> Anzahl der Trades
-const trades = {};         // threadId -> Trade-Daten Object
+// Pfad zur JSON-Datenbank
+const DATA_FILE = path.join(__dirname, '../../data/database.json');
 
-module.exports = { tradeCounters, trades };
+// Standard-Datenstruktur
+let data = {
+    tradeCounters: {},
+    trades: {},
+    vouches: []
+};
+
+function loadData() {
+    try {
+        if (fs.existsSync(DATA_FILE)) {
+            const raw = fs.readFileSync(DATA_FILE, 'utf8');
+            data = JSON.parse(raw);
+        }
+        if (!data.tradeCounters) data.tradeCounters = {};
+        if (!data.trades) data.trades = {};
+        if (!data.vouches) data.vouches = [];
+    } catch (err) {
+        console.error('Fehler beim Laden der Datenbank:', err);
+    }
+}
+
+function saveData() {
+    try {
+        const dir = path.dirname(DATA_FILE);
+        if (!fs.existsSync(dir)) {
+            fs.mkdirSync(dir, { recursive: true });
+        }
+        fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+    } catch (err) {
+        console.error('Fehler beim Speichern der Datenbank:', err);
+    }
+}
+
+// Beim Start laden
+loadData();
+
+module.exports = {
+    get tradeCounters() { return data.tradeCounters; },
+    get trades() { return data.trades; },
+    get vouches() { return data.vouches; },
+    save: saveData,
+    reload: loadData
+};

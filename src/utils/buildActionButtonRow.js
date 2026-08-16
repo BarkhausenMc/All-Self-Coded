@@ -1,11 +1,13 @@
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
 module.exports = function buildActionButtonRow(data) {
-    // Wenn Trade geschlossen oder abgebrochen → keine Buttons
+    // Abgeschlossen oder abgebrochen → keine Buttons
     if (data.closed || data.cancelled) return null;
 
+    // Vouch-Phase → kein Close/Claim Button mehr
+    if (data.awaitingVouch) return null;
+
     if (data.claimedBy) {
-        // Geclaimt → [Schließen] [Abbrechen]
         return new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setCustomId('close')
@@ -19,7 +21,6 @@ module.exports = function buildActionButtonRow(data) {
                 .setEmoji('🗑️')
         );
     } else {
-        // Nicht geclaimt → [Claim] [Abbrechen]
         return new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setCustomId('claim')

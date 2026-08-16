@@ -11,22 +11,21 @@ const {
 } = require('discord.js');
 require('dotenv').config();
 
-// Eigene Module importieren
 const constants = require('./src/config/constants');
 const handleButton = require('./src/handlers/buttonHandler');
 const handleSelectMenu = require('./src/handlers/selectMenuHandler');
 const handleModal = require('./src/handlers/modalHandler');
+const { handleVouchSelect, handleVouchModal } = require('./src/handlers/vouchHandler');
 
-// Client mit Intents erstellen
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMembers  // Braucht Privileged Intent im Developer Portal!
+        GatewayIntentBits.GuildMembers
     ]
 });
 
 // ==========================================
-// READY EVENT — Trading Panel senden
+// READY EVENT
 // ==========================================
 client.once('ready', async () => {
     console.log('Bot ist online!');
@@ -90,27 +89,36 @@ client.once('ready', async () => {
 });
 
 // ==========================================
-// INTERACTION CREATE — An Handler weiterleiten
+// INTERACTION CREATE — Routing
 // ==========================================
 client.on('interactionCreate', async (interaction) => {
     try {
-        if (interaction.isButton()) {
+        // Vouch Select Menu → vouchHandler
+        if (interaction.isStringSelectMenu() && interaction.customId === 'vouch_stars') {
+            await handleVouchSelect(interaction);
+        }
+        // Vouch Modal → vouchHandler
+        else if (interaction.isModalSubmit() && interaction.customId.startsWith('vouch_modal:')) {
+            await handleVouchModal(interaction);
+        }
+        // Normale Buttons → buttonHandler
+        else if (interaction.isButton()) {
             await handleButton(interaction);
-        } else if (interaction.isStringSelectMenu()) {
+        }
+        // Normales Select Menu → selectMenuHandler
+        else if (interaction.isStringSelectMenu()) {
             await handleSelectMenu(interaction);
-        } else if (interaction.isModalSubmit()) {
+        }
+        // Normales Modal → modalHandler
+        else if (interaction.isModalSubmit()) {
             await handleModal(interaction);
         }
     } catch (error) {
         console.error('Fehler bei Interaction:', error);
-        // Falls noch nicht geantwortet wurde, versuche eine Fehlermeldung
         if (!interaction.replied && !interaction.deferred) {
             await interaction.reply({ content: '❌ Ein Fehler ist aufgetreten.', flags: MessageFlags.Ephemeral }).catch(() => {});
         }
     }
 });
 
-// ==========================================
-// LOGIN
-// ==========================================
 client.login(process.env.DISCORD_TOKEN);

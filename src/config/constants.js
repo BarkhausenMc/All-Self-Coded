@@ -10,5 +10,6 @@ module.exports = {
     },
 
     TRADER_ROLE_ID: process.env.TRADER_ROLE_ID,
-    CHANNEL_ID: process.env.CHANNEL_ID
+    CHANNEL_ID: process.env.CHANNEL_ID,
+    VOUCH_CHANNEL_ID: process.env.VOUCH_CHANNEL_ID
 };

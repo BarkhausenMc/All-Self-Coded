@@ -9,46 +9,43 @@ const {
 } = require('discord.js');
 
 const constants = require('../config/constants');
-const { tradeCounters, trades } = require('../data/store');
+const store = require('../data/store');
+const { tradeCounters, trades } = store;
 const buildTradeContainer = require('../utils/buildTradeContainer');
 const buildActionButtonRow = require('../utils/buildActionButtonRow');
 
 module.exports = async function handleModal(interaction) {
     if (interaction.customId.startsWith('trade_modal:')) {
-        // customId Format: 'trade_modal:ankauf:Skeleton'
         const parts = interaction.customId.split(':');
-        const tradeType = parts[1];    // 'ankauf' oder 'verkauf'
-        const spawnerType = parts[2];   // 'Skeleton' oder 'Creeper'
+        const tradeType = parts[1];
+        const spawnerType = parts[2];
 
-        // Werte aus dem Modal auslesen
         const ingameName = interaction.fields.getTextInputValue('ingame_name');
         const amount = interaction.fields.getTextInputValue('amount');
 
-        // Antworte Discord mit "loading" (ephemeral)
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-        // Trade-Counter hochzählen
+        // Counter hochzählen und speichern
         tradeCounters[interaction.user.id] = (tradeCounters[interaction.user.id] || 0) + 1;
         const handNummer = tradeCounters[interaction.user.id];
+        store.save();
 
-        // Dynamische Werte setzen
         const emoji = tradeType === 'ankauf' ? '🛒' : '💰';
         const action = tradeType === 'ankauf' ? 'Ankauf' : 'Verkauf';
         const spawnerEmoji = constants.spawnerEmojis[spawnerType] || '❌';
         const pricePerUnit = constants.prices[spawnerType][tradeType];
         const totalPrice = pricePerUnit * parseInt(amount);
 
-        // Privaten Thread erstellen
+        // Thread erstellen
         const thread = await interaction.channel.threads.create({
             name: `${emoji} ${action} - ${interaction.user.username}`,
             type: ChannelType.PrivateThread,
             invitable: false
         });
 
-        // Kunden (User der geklickt hat) zum Thread hinzufügen
         await thread.members.add(interaction.user.id);
 
-        // Trader-Rolle zum Thread hinzufügen
+        // Trader-Rolle einladen
         if (constants.TRADER_ROLE_ID) {
             try {
                 const allMembers = await interaction.guild.members.fetch();
@@ -61,12 +58,14 @@ module.exports = async function handleModal(interaction) {
             }
         }
 
-        // Trade-Daten Object bauen
+        // Trade-Daten
         const tradeData = {
-            messageId: null,          // wird nach thread.send gesetzt
-            claimedBy: null,          // noch niemand hat geclaimt
-            closed: false,            // nicht geschlossen
-            cancelled: false,         // nicht abgebrochen
+            messageId: null,
+            claimedBy: null,
+            closed: false,
+            cancelled: false,
+            awaitingVouch: false,
+            vouches: [],
             kundeId: interaction.user.id,
             ingameName,
             spawnerType,
@@ -79,21 +78,18 @@ module.exports = async function handleModal(interaction) {
             action
         };
 
-        // Container (Text) und Buttons bauen
         const container = buildTradeContainer(tradeData);
         const actionRow = buildActionButtonRow(tradeData);
 
-        // Nachricht in den Thread senden (Container + Buttons separat)
         const tradeMsg = await thread.send({
             components: [container, actionRow],
             flags: MessageFlags.IsComponentsV2
         });
 
-        // messageId speichern (wird für Updates gebraucht)
         tradeData.messageId = tradeMsg.id;
         trades[thread.id] = tradeData;
+        store.save();
 
-        // User bestätigen, dass der Thread erstellt wurde
         await interaction.editReply({
             components: [
                 new ContainerBuilder()
