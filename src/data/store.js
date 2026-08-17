@@ -6,7 +6,8 @@ const DATA_FILE = path.join(__dirname, '../../data/database.json');
 let data = {
     tradeCounters: {},
     trades: {},
-    vouches: []
+    vouches: [],
+    traderStats: {}
 };
 
 function loadData() {
@@ -18,13 +19,12 @@ function loadData() {
         if (!data.tradeCounters) data.tradeCounters = {};
         if (!data.trades) data.trades = {};
         if (!data.vouches) data.vouches = [];
+        if (!data.traderStats) data.traderStats = {};
         console.log('✅ Datenbank geladen:', Object.keys(data.trades).length, 'aktive Trades');
-        
-        // DEBUG: Zeige alle gespeicherten Trade-IDs
-        console.log('Stored Trade IDs:', Object.keys(data.trades));
+        console.log('📊 Trader-Stats:', Object.keys(data.traderStats).length, 'Trader erfasst');
     } catch (err) {
         console.error('❌ Fehler beim Laden:', err);
-        data = { tradeCounters: {}, trades: {}, vouches: [] };
+        data = { tradeCounters: {}, trades: {}, vouches: [], traderStats: {} };
     }
 }
 
@@ -42,10 +42,10 @@ function saveData() {
 loadData();
 
 module.exports = {
-    tradeCounters: data.tradeCounters,
-    trades: data.trades,
-    vouches: data.vouches,
-    data: data,
+    get tradeCounters() { return data.tradeCounters; },
+    get trades() { return data.trades; },
+    get vouches() { return data.vouches; },
+    get traderStats() { return data.traderStats; },
     save: saveData,
     reload: loadData
 };
