@@ -35,7 +35,22 @@ const commands = [
         .addSubcommand(sub =>
             sub.setName('spawner')
                 .setDescription('Sendet das Spawner Trading Panel in den aktuellen Channel')
-        )
+        ),
+    
+    //Trader Stats
+    new SlashCommandBuilder()
+        .setName('trader-stats')
+        .setDescription('Zeigt die Handelsstatistiken eines Traders an')
+        .addUserOption(opt =>
+            opt.setName('trader')
+                .setDescription('Welcher Trader? (Leer = dich selbst)')
+                .setRequired(false)
+        ),
+    
+     //Trader Leaderboard
+    new SlashCommandBuilder()
+        .setName('trader-top')
+        .setDescription('Zeigt die Top 10 Trader nach abgeschlossenen Trades')
 ].map(cmd => cmd.toJSON());
 
 client.once('ready', async () => {
@@ -168,6 +183,86 @@ const container = new ContainerBuilder()
             await interaction.reply({ content: '❌ Ein Fehler ist aufgetreten.', flags: MessageFlags.Ephemeral }).catch(() => {});
         }
     }
+    // === TRADER STATS COMMAND ===
+if (interaction.commandName === 'trader-stats') {
+    const targetUser = interaction.options.getUser('trader') || interaction.user;
+    const stats = store.traderStats[targetUser.id];
+
+    if (!stats || stats.completedTrades === 0) {
+        await interaction.reply({
+            content: `❌ <@${targetUser.id}> hat noch keine abgeschlossenen Trades.`,
+            flags: MessageFlags.Ephemeral
+        });
+        return;
+    }
+
+    const avgStars = stats.starCount > 0 
+        ? (stats.totalStars / stats.starCount).toFixed(1) 
+        : 'N/A';
+
+    const profit = stats.totalEarned - stats.totalSpent;
+    const profitEmoji = profit >= 0 ? '📈' : '📉';
+    const profitStr = profit >= 0 ? `+${profit.toFixed(1)}M` : `${profit.toFixed(1)}M`;
+
+    const statsContainer = new ContainerBuilder()
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+                `## 📊 • Trader Statistiken\n\n` +
+                `**Trader:** <@${targetUser.id}>\n\n` +
+                `**🤝 Abgeschlossene Trades:** ${stats.completedTrades}\n` +
+                `**⭐ Durchschnittliche Bewertung:** ${avgStars} / 5\n\n` +
+                `--- *Finanzen* ---\n` +
+                `**💎 Gesamtvolumen:** ${stats.totalVolume.toFixed(1)}M\n` +
+                `**📈 Eingenommen (Ankauf):** ${stats.totalEarned.toFixed(1)}M\n` +
+                `**📉 Ausgezahlt (Verkauf):** ${stats.totalSpent.toFixed(1)}M\n` +
+                `${profitEmoji} **Saldo:** ${profitStr}`
+            )
+        );
+
+    await interaction.reply({
+        components: [statsContainer],
+        flags: MessageFlags.IsComponentsV2
+    });
+    return;
+}
+
+// === TRADER TOP LEADERBOARD ===
+if (interaction.commandName === 'trader-top') {
+    const allStats = Object.entries(store.traderStats)
+        .filter(([, s]) => s.completedTrades > 0)
+        .sort((a, b) => b[1].completedTrades - a[1].completedTrades)
+        .slice(0, 10);
+
+    if (allStats.length === 0) {
+        await interaction.reply({
+            content: '❌ Noch keine abgeschlossenen Trades vorhanden.',
+            flags: MessageFlags.Ephemeral
+        });
+        return;
+    }
+
+    const medals = ['🥇', '🥈', '🥉'];
+    const leaderboard = allStats.map(([userId, s], i) => {
+        const medal = medals[i] || `**${i + 1}.**`;
+        const avg = s.starCount > 0 ? (s.totalStars / s.starCount).toFixed(1) : 'N/A';
+        return `${medal} <@${userId}> — ${s.completedTrades} Trades | ⭐ ${avg} | 💎 ${s.totalVolume.toFixed(1)}M`;
+    }).join('\n');
+
+    const topContainer = new ContainerBuilder()
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+                `## 🏆 • Trader Leaderboard — Top 10\n\n` +
+                `Sortiert nach abgeschlossenen Trades\n\n` +
+                leaderboard
+            )
+        );
+
+    await interaction.reply({
+        components: [topContainer],
+        flags: MessageFlags.IsComponentsV2
+    });
+    return;
+}
 });
 
 client.login(process.env.DISCORD_TOKEN);

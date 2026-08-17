@@ -218,6 +218,38 @@ async function handleVouchModal(interaction) {
 
         trade.awaitingVouch = false;
         trade.closed = true;
+        // === TRADER STATS HOCHZÄHLEN ===
+if (trade.claimedBy) {
+    if (!store.traderStats[trade.claimedBy]) {
+        store.traderStats[trade.claimedBy] = {
+            completedTrades: 0,
+            totalVolume: 0,      // Gesamtvolumen aller Trades
+            totalEarned: 0,      // Verdient (durch Ankauf = Kunde kauft)
+            totalSpent: 0,       // Ausgegeben (durch Verkauf = Kunde verkauft)
+            totalStars: 0,       // Sterne vom Kunden erhalten
+            starCount: 0         // Anzahl der Sterne-Bewertungen
+        };
+    }
+    
+    const stats = store.traderStats[trade.claimedBy];
+    stats.completedTrades += 1;
+    stats.totalVolume += trade.totalPrice;
+    
+    if (trade.action === 'Ankauf') {
+        // Kunde kauft → Trader/Plattform verdient das Geld
+        stats.totalEarned += trade.totalPrice;
+    } else {
+        // Kunde verkauft → Trader/Plattform zahlt Geld raus
+        stats.totalSpent += trade.totalPrice;
+    }
+    
+    // Sterne vom Kunden für den Tracker speichern
+    const customerVouch2 = trade.vouchEntries.find(v => v.reviewerId === trade.kundeId);
+    if (customerVouch2) {
+        stats.totalStars += customerVouch2.rating;
+        stats.starCount += 1;
+    }
+}
         store.save();
 
         try {
