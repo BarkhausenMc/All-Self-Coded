@@ -197,16 +197,21 @@ if (interaction.commandName === 'trader-stats') {
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(
                 `## 📊 • Trader Statistiken\n\n` +
-                `**Trader:** <@${targetUser.id}>\n\n` +
-                `**🤝 Abgeschlossene Trades:** ${stats.completedTrades}\n` +
-                `**⭐ Durchschnittliche Bewertung:** ${avgStars} / 5\n\n` +
-                `--- *Finanzen* ---\n` +
-                `**💎 Gesamtvolumen:** ${stats.totalVolume.toFixed(1)}M\n` +
-                `**📈 Eingenommen (Ankauf):** ${stats.totalEarned.toFixed(1)}M\n` +
-                `**📉 Ausgezahlt (Verkauf):** ${stats.totalSpent.toFixed(1)}M\n` +
-                `${profitEmoji} **Saldo:** ${profitStr}`
+                `**🤝 Trader:** <@${targetUser.id}>\n\n` +
+                `**✅ Abgeschlossene Trades:** ${stats.completedTrades}\n` +
+                `**⭐ Durchschnittliche Bewertung:** ${avgStars} / 5\n\n` 
             )
-        );
+        )
+        .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+                `## 💵 • Money\n\n` +
+                `**💰 Gesamtvolumen:** ${stats.totalVolume.toFixed(1)}M\n` +
+                `**➕ Eingenommen (Ankauf):** ${stats.totalEarned.toFixed(1)}M\n` +
+                `**➖ Ausgezahlt (Verkauf):** ${stats.totalSpent.toFixed(1)}M\n` 
+                
+            )
+        )
 
     await interaction.reply({
         components: [statsContainer],
