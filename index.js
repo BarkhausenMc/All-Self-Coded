@@ -94,8 +94,8 @@ const priceLines = Object.entries(constants.prices).map(([name, prices]) => {
     const ankaufStopped = prices.ankauf === 'Stop' || prices.ankauf === undefined;
     const verkaufStopped = prices.verkauf === 'Stop' || prices.verkauf === undefined;
     
-    const ankauf = ankaufStopped ? 'GESPERRT' : `${prices.ankauf.toFixed(1)}M`;
-    const verkauf = verkaufStopped ? 'GESPERRT' : `${prices.verkauf.toFixed(1)}M`;
+    const ankauf = ankaufStopped ? 'GESTOPT' : `${prices.ankauf.toFixed(1)}M`;
+    const verkauf = verkaufStopped ? 'GESTOPT' : `${prices.verkauf.toFixed(1)}M`;
     const emoji = constants.spawnerEmojis[name] || '📦';
     
     return `${emoji} ${name.padEnd(12)} ${ankauf.padStart(10)}  ${verkauf.padStart(10)}`;

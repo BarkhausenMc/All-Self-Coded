@@ -225,7 +225,7 @@ if (interaction.customId === 'spawner_ankaufen') {
         return {
             label: `${name} Spawner`,
             description: isStopped 
-                ? '⚠️ Ankauf derzeit GESPERRT' 
+                ? '⚠️ Ankauf derzeit GESTOPT' 
                 : `Preis: ${prices.ankauf.toFixed(1)}M`,
             value: name,
             emoji: constants.spawnerEmojis[name] || '📦'
@@ -259,7 +259,7 @@ if (interaction.customId === 'spawner_verkaufen') {
         return {
             label: `${constants.spawnerEmojis[name] || '📦'} ${name} Spawner`,
             description: isStopped 
-                ? '⚠️ Verkauf derzeit GESPERRT' 
+                ? '⚠️ Verkauf derzeit GESTOPT' 
                 : `Du bekommst: ${prices.verkauf.toFixed(1)}M`,
             value: name,
             emoji: constants.spawnerEmojis[name] || '📦'
