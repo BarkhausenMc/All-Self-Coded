@@ -18,25 +18,21 @@ module.exports = {
         ),
 
     async execute(interaction) {
-        await interaction.deferReply({ flags: 64 });
-
         if (!interaction.member.roles.cache.has(constants.TRADER_ADMIN_ROLE_ID)) {
-            await interaction.editReply({ content: '❌ Nur Trader Admins dürfen Ankündigungen machen!' });
+            await interaction.reply({ content: '❌ Nur Trader Admins dürfen Ankündigungen machen!', flags: 64 });
             return;
         }
 
         const titel = interaction.options.getString('titel') || '📋 Preisänderung';
         const ping = interaction.options.getBoolean('ping') ?? false;
 
-        // ⭐ LETZTE 5 MINUTEN ÄNDERUNGEN HOLEN
         const recentChanges = store.getRecentPriceChanges(5);
 
         if (recentChanges.length === 0) {
-            await interaction.editReply({ content: '❌ Keine Preisänderungen in den letzten 5 Minuten! Nutze erst `/setprice` oder `/toggletrade`.' });
+            await interaction.reply({ content: '❌ Keine Preisänderungen in den letzten 5 Minuten! Nutze erst `/setprice` oder `/toggletrade`.' });
             return;
         }
 
-        // ⭐ ÄNDERUNGEN FORMATIEREN
         const changeLines = recentChanges.map(change => {
             const emoji = constants.spawnerEmojis[change.spawner] || '📦';
             const typLabel = change.type === 'ankauf' ? '🛒 Ankauf' : '💰 Verkauf';
@@ -57,7 +53,6 @@ module.exports = {
             return `### ${emoji} ${change.spawner} — ${typLabel}\n${arrow} ~~${oldStr}~~ → **${newStr}**\n*vor <t:${Math.floor(change.timestamp / 1000)}:R>*`;
         }).join('\n\n');
 
-        // ⭐ ROLLE PING
         const rolePing = ping && constants.SPAWNER_PRICE_ROLE_ID
             ? `<@&${constants.SPAWNER_PRICE_ROLE_ID}>\n\n`
             : '';
@@ -84,10 +79,14 @@ module.exports = {
         const channel = interaction.guild.channels.cache.get(announceChannelId);
 
         if (!channel) {
-            await interaction.editReply({ content: '❌ Ankündigungs-Channel nicht gefunden!' });
+            await interaction.reply({ content: '❌ Ankündigungs-Channel nicht gefunden!' });
             return;
         }
 
+        // ⭐ SOFORT REPLY
+        await interaction.reply({ content: `✅ Ankündigung wird gesendet...`, flags: 64 });
+
+        // ⭐ DANN ERST SENDEN
         await channel.send({
             components: [container],
             flags: MessageFlags.IsComponentsV2,

@@ -26,10 +26,8 @@ module.exports = {
         ),
 
     async execute(interaction) {
-        await interaction.deferReply({ flags: 64 });
-
         if (!interaction.member.roles.cache.has(constants.TRADER_ADMIN_ROLE_ID)) {
-            await interaction.editReply({ content: '❌ Nur Trader Admins dürfen Trades stoppen!' });
+            await interaction.reply({ content: '❌ Nur Trader Admins dürfen Trades stoppen!', flags: 64 });
             return;
         }
 
@@ -38,21 +36,22 @@ module.exports = {
 
         const oldValue = store.getPrice(spawner, typ);
         const newValue = store.togglePrice(spawner, typ);
-
-        // ⭐ ÄNDERUNG AUFZEICHNEN
         store.recordPriceChange(spawner, typ, oldValue, newValue, interaction.user.id);
-
-        // ⭐ PANEL UPDATEN
-        await store.updatePricePanel(interaction.client);
 
         const emoji = constants.spawnerEmojis[spawner] || '📦';
         const typLabel = typ === 'ankauf' ? '🛒 Ankauf' : '💰 Verkauf';
-        const isStopped = newValue === 'Stop';
         const oldStatus = oldValue === 'Stop' ? 'GESTOPPT' : `${oldValue.toFixed(1)}M`;
-        const newStatus = isStopped ? 'GESTOPPT' : `${newValue.toFixed(1)}M`;
+        const newStatus = newValue === 'Stop' ? 'GESTOPPT' : `${newValue.toFixed(1)}M`;
 
-        await interaction.editReply({
-            content: `${emoji} ${spawner} — ${typLabel}: ~~${oldStatus}~~ → **${newStatus}**`
+        // ⭐ SOFORT REPLY (vor Panel-Update!)
+        await interaction.reply({
+            content: `${emoji} ${spawner} — ${typLabel}: ~~${oldStatus}~~ → **${newStatus}**\n\n📊 Panel wird aktualisiert...`,
+            flags: 64
+        });
+
+        // ⭐ PANEL UPDATE IM HINTERGRUND
+        store.updatePricePanel(interaction.client).catch(err => {
+            console.error('Panel update error:', err.message);
         });
     }
 };
