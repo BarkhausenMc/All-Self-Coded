@@ -1,41 +1,51 @@
 const { ContainerBuilder, TextDisplayBuilder, SeparatorBuilder } = require('discord.js');
 
 module.exports = function buildTradeContainer(data) {
+    // === ABGEBROCHEN ===
     if (data.cancelled) {
         return new ContainerBuilder()
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
                     `## ❌ • Handel abgebrochen\n\n` +
-                    `**Handel #${data.handNummer}** wurde vom Kunde abgebrochen.\n\n` +
-                    `Dieser Thread wird automatisch archiviert.`
+                    `**Handel #${data.handNummer}** wurde abgebrochen.\n\n` +
+                    `Dieser Thread wird in Kürze gelöscht.`
                 )
             );
     }
-    
-    if (data.closed) {
-        const customerRating = data.vouchEntries?.find(v => v.reviewerId === data.kundeId);
-        const traderRating = data.vouchEntries?.find(v => v.reviewerId === data.claimedBy);
-        
+
+    // === ABGESCHLOSSEN (warten auf Vouch) ===
+    if (data.awaitingVouch) {
+        const vouchCount = (data.vouches || []).length;
         return new ContainerBuilder()
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
-                    `## ✅ Handel abgeschlossen\n\n` +
-                    `Abgeschlossen von <@${data.claimedBy}>.\n` +
-                    `Dieser Thread wird in Kürze automatisch archiviert.`
-                )
-            )
-            .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
-            .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(
-                    `### ⭐ Bewertung · Handel #${data.handNummer}\n\n` +
-                    `Der Handel ist abgeschlossen! Bitte bewertet euch gegenseitig.\n\n` +
-                    `${customerRating ? `**@Kunde**` : '@Kunde'} ${customerRating ? '⭐' : '⏳ Ausstehend'}\n` +
-                    `${traderRating ? `**@Trader**` : '@Trader'} ${traderRating ? '⭐' : '⏳ Ausstehend'}`
+                    `## ⏳ • Warte auf Bewertungen (${vouchCount}/2)\n\n` +
+                    `Bitte bewertet euch gegenseitig im Thread!`
                 )
             );
     }
-    
-     return new ContainerBuilder()
+
+    // === ABGESCHLOSSEN (beide bewertet) ===
+    if (data.closed) {
+        return new ContainerBuilder()
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(
+                    `## ✅ • Handel abgeschlossen\n\n` +
+                    `Abgeschlossen von <@${data.claimedBy}>.\n` +
+                    `Dieser Thread wird in Kürze gelöscht.`
+                )
+            );
+    }
+
+    // === STANDARD (offen oder geclaimt) ===
+    let statusLine;
+    if (data.claimedBy) {
+        statusLine = `🔒 Das Ticket wurde von <@${data.claimedBy}> geclaimt.`;
+    } else {
+        statusLine = `🔓 Das Ticket wurde noch nicht geclaimt!`;
+    }
+
+    return new ContainerBuilder()
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(
                 `## ${data.emoji} • Spawner ${data.action}\n\n` +
@@ -60,7 +70,6 @@ module.exports = function buildTradeContainer(data) {
         )
         .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
         .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(statusText)
+            new TextDisplayBuilder().setContent(statusLine)
         );
-
-}; 
+};
