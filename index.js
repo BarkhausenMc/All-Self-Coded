@@ -21,13 +21,14 @@ const handleSelectMenu = require('./src/handlers/selectMenuHandler');
 const handleModal = require('./src/handlers/modalHandler');
 const { handleVouchSelect, handleVouchModal } = require('./src/handlers/vouchHandler');
 
+global.client = null; 
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMembers
     ]
 });
-
+global.client = client;
 // === SLASH COMMANDS ===
 const commands = [
     new SlashCommandBuilder()
