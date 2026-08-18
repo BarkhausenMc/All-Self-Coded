@@ -62,7 +62,7 @@ module.exports = {
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
                     `*Um einen Trade zu starten, gehe den #spawner Channel*\n` +
-                    `||** ${rolePing} **||`
+                    `**${rolePing}**`
                 )
             );
 
