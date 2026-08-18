@@ -39,7 +39,7 @@ module.exports = {
             const verkaufStr = verkauf === 'Stop' ? '🔴 STOP' : `🟢 ${verkauf.toFixed(1)}M`;
             
             return `### ${emoji} ${name}\n🛒 Ankauf: ${ankaufStr} | 💰 Verkauf: ${verkaufStr}`;
-        }).join('\n\n');
+        }).join('\n');
 
         // ⭐ ROLLE PING IN TEXTDISPLAY (nicht als content!)
         const rolePing = ping && constants.SPAWNER_PRICE_ROLE_ID
@@ -61,7 +61,7 @@ module.exports = {
             .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
-                    `*Um einen Trade zu starten, gehe den #spawner Channel*` +
+                    `*Um einen Trade zu starten, gehe den #spawner Channel*\n` +
                     `||** ${rolePing} **||`
                 )
             );
