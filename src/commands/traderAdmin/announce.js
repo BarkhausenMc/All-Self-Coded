@@ -50,19 +50,19 @@ module.exports = {
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
                     `## 📢 ${titel}\n\n` +
-                    `> *Die Preise wurden aktualisiert!*\n` +
-                    `> *Stand: <t:${Math.floor(Date.now() / 1000)}:R>*\n\n` 
+                    `> *Die Preise wurden aktualisiert!*\n` 
                 )
             )
             .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
             .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(priceLines)
+                new TextDisplayBuilder().setContent(```priceLines```)
             )
             .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
                     `*Um einen Trade zu starten, gehe den #spawner Channel*\n` +
-                    `**${rolePing}**`
+                    `**${rolePing}**` +
+                    `> *Stand: <t:${Math.floor(Date.now() / 1000)}:R>*\n\n` 
                 )
             );
 
