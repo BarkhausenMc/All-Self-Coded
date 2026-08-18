@@ -66,17 +66,21 @@ module.exports = {
         const container = new ContainerBuilder()
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
-                    `## 📢 ${titel}\n\n` +
-                    `${rolePing}` +
+                    `## 📢 ${titel}\n\n` 
+                )
+            )
+            .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(
                     `> *Folgende Preise wurden geändert:*\n` +
-                    changeLines
+                    changeLines                    
                 )
             )
             .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
                     `📋 **Aktuelle Preise** siehe Trading Panel.\n\n` +
-                    `> **||*Geändert von <@${interaction.user.id}>*||**`
+                    `> **||*Geändert von <@${interaction.user.id}; ${rolePing}*>||**`
                 )
             );
 
