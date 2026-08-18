@@ -44,7 +44,7 @@ module.exports = async function handleModal(interaction) {
     const totalPrice = pricePerUnit * parsedAmount;
 
     const thread = await interaction.channel.threads.create({
-        name: `${emoji} ${action} - ${spawnerEmoji} ${spawnerType} - 📦 Menge: ${amount}`,
+        name: `${emoji} ${action} - ${spawnerEmoji} ${spawnerType} - 📦 Menge: ${amount} - ${handNummer}`,
         type: ChannelType.PrivateThread,
         invitable: false
     });
@@ -104,7 +104,7 @@ module.exports = async function handleModal(interaction) {
          }
      }
 
-    // === TRADE IN LOG POSTEN ===
+    // === TRADE IN LOG POSTEN === //vor vouch
     if (constants.LOG_CHANNEL_ID) {
         try {
             const logContainer = new ContainerBuilder()
