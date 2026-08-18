@@ -137,13 +137,16 @@ client.on('interactionCreate', async (interaction) => {
                         console.log('Fehler beim Aufräumen alter Panels:', err.message);
                     }
 
-                    const priceLines = Object.entries(constants.prices).map(([name, prices]) => {
-                        const ankauf = prices.ankauf === 'Stop' ? 'STOP' : `${prices.ankauf.toFixed(1)}M`;
-                        const verkauf = prices.verkauf === 'Stop' ? 'STOP' : `${prices.verkauf.toFixed(1)}M`;
-                        const emoji = constants.spawnerEmojis[name] || '📦';
-                        return `${emoji} ${name.padEnd(12)} ${ankauf.padStart(10)}  ${verkauf.padStart(10)}`;
-                    }).join('\n');
-
+// ⭐ NEU (funktioniert):
+const priceLines = Object.entries(constants.prices).map(([name, defaultPrices]) => {
+    const dynAnkauf = store.getPrice(name, 'ankauf');
+    const dynVerkauf = store.getPrice(name, 'verkauf');
+    
+    const ankauf = dynAnkauf === 'Stop' ? 'STOP' : `${dynAnkauf.toFixed(1)}M`;
+    const verkauf = dynVerkauf === 'Stop' ? 'STOP' : `${dynVerkauf.toFixed(1)}M`;
+    const emoji = constants.spawnerEmojis[name] || '📦';
+    return `${emoji} ${name.padEnd(12)} ${ankauf.padStart(10)}  ${verkauf.padStart(10)}`;
+}).join('\n');
                     const container = new ContainerBuilder()
                         .addTextDisplayComponents(
                             new TextDisplayBuilder().setContent('## :shopping_cart: • SPAWNER TRADING • :moneybag:\n*Yayks Spawner Trading*\n||*Only Trusted Trader, Faire Preise :purple_heart:*||')

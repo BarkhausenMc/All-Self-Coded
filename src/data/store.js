@@ -41,9 +41,11 @@ function saveData() {
 }
 
 function getPrice(spawnerName, type) {
+    // Prüfe zuerst ob ein Stop-Eintrag existiert
     if (data.prices && data.prices[spawnerName] && data.prices[spawnerName][type] !== undefined) {
         return data.prices[spawnerName][type];
     }
+    // Default aus constants
     return constants.prices[spawnerName]?.[type] || 0;
 }
 
