@@ -46,30 +46,54 @@ async function logTrade(guild, trade, status) {
 
 async function forceCloseVouchWithChannel(channel, trade, guild) {
     try {
-        if (trade.vouchEntries && trade.vouchEntries.length > 0) {
-            const vouchChannel = guild.channels.cache.get(constants.VOUCH_CHANNEL_ID);
-            if (vouchChannel) {
-                let content = `## ${trade.emoji} • Handel #${trade.handNummer}\n\n`;
-                content += `**${trade.emoji} Aktion:** ${trade.action}\n`;
-                content += `**${trade.spawnerEmoji} Spawner:** ${trade.spawnerType}\n`;
-                content += `**📦 Menge:** ${trade.amount}\n`;
-                content += `**💰 Gesamtpreis:** ${trade.totalPrice.toFixed(1)}M\n\n`;
-                content += `**👤 Kunde:** <@${trade.kundeId}>\n`;
-                content += `**🤝 Trader:** <@${trade.claimedBy}>\n\n`;
+        const vouchChannel = guild.channels.cache.get(constants.VOUCH_CHANNEL_ID);
+        if (vouchChannel) {
+            const customerVouch = trade.vouchEntries?.find(v => v.reviewerId === trade.kundeId);
+            const traderVouch = trade.vouchEntries?.find(v => v.reviewerId === trade.claimedBy);
 
-                for (const vouch of trade.vouchEntries) {
-                    const role = vouch.reviewerId === trade.kundeId ? 'Kunde' : 'Trader';
-                    const stars = '⭐'.repeat(vouch.rating);
-                    content += `### 📝 Bewertung von ${role}\n${stars} (${vouch.rating}/5)\n> ${vouch.text}\n\n`;
-                }
+            const customerStars = customerVouch ? '⭐'.repeat(customerVouch.rating) : '';
+            const traderStars = traderVouch ? '⭐'.repeat(traderVouch.rating) : '';
 
-                const vouchContainer = new ContainerBuilder()
-                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(content));
+            const vouchContainer = new ContainerBuilder()
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(
+                        `## ✅ Handel abgeschlossen • #${trade.handNummer}\n\n` +
+                        `**👤 Kunde:** <@${trade.kundeId}>\n` +
+                        `**🤝 Trader:** <@${trade.claimedBy || '-'}>`
+                    )
+                )
+                .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(
+                        `**${trade.emoji} Geschäft:** ${trade.action} ||(aus sicht des Kunden)||\n` +
+                        `**${trade.spawnerEmoji} Spawner:** ${trade.spawnerType}\n` +
+                        `**📦 Menge:** ${trade.amount}\n` +
+                        `**💰 Gesamtpreis:** ${trade.totalPrice.toFixed(1)}M\n`
+                    )
+                )
+                .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(
+                        `### 📝 Bewertung von Kunde → Trader\n` +
+                        (customerVouch
+                            ? `${customerStars} (${customerVouch.rating}/5)\n> ${customerVouch.text}`
+                            : `— Keine Bewertung abgegeben`)
+                    )
+                )
+                .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(
+                        `### 📝 Bewertung von Trader → Kunde\n` +
+                        (traderVouch
+                            ? `${traderStars} (${traderVouch.rating}/5)\n> ${traderVouch.text}`
+                            : `— Keine Bewertung abgegeben`)
+                    )
+                );
 
-                await vouchChannel.send({ components: [vouchContainer], flags: MessageFlags.IsComponentsV2 });
-            }
+            await vouchChannel.send({ components: [vouchContainer], flags: MessageFlags.IsComponentsV2 });
         }
 
+        // Stats updaten
         if (trade.claimedBy && store.traderStats) {
             if (!store.traderStats[trade.claimedBy]) {
                 store.traderStats[trade.claimedBy] = {
