@@ -26,7 +26,7 @@ module.exports = function buildTradeContainer(data) {
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(
                 `## ${data.emoji} • Spawner ${data.action}\n\n` +
-                `**🤝 • Handel #${data.handNummer}**`
+                `**🤝 • Handel #${data.handNummer}** ||** <@&${constants.TRADER_ROLE_ID}> **|| `
             )
         )
         .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))

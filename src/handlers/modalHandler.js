@@ -94,15 +94,15 @@ module.exports = async function handleModal(interaction) {
     });
 
     // === TRADER PING ===
-    if (constants.TRADER_ROLE_ID) {
-        try {
-            await thread.send({
-                content: `<@&${constants.TRADER_ROLE_ID}> — Neuer Trade von \`${ingameName}\`! 📢`
-            });
-        } catch (err) {
-            console.log('Fehler beim Trader-Ping:', err.message);
-        }
-    }
+    // if (constants.TRADER_ROLE_ID) {
+    //     try {
+    //         await thread.send({
+    //             content: `<@&${constants.TRADER_ROLE_ID}> — Neuer Trade von \`${ingameName}\`! 📢`
+    //         });
+    //     } catch (err) {
+    //         console.log('Fehler beim Trader-Ping:', err.message);
+    //     }
+    // }
 
     // === TRADE IN LOG POSTEN ===
     if (constants.LOG_CHANNEL_ID) {
