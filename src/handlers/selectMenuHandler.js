@@ -26,7 +26,7 @@ module.exports = async function handleSelectMenu(interaction) {
                     new TextDisplayBuilder().setContent(
                         `## ❌ • ${spawnerType} ${actionLabel} derzeit nicht verfügbar\n\n` +
                         `Der **${spawnerType}** Spawner ${actionLabel.toLowerCase()} ist aktuell **gestoppt**.\n` +
-                        `Du bekommst ein Ping, wenn sich etwas bei unsere Preise/An- und Verkauf ändert.\n` +
+                        `Du bekommst ein **Ping**, wenn sich etwas bei unsere **Preise/An- und Verkauf** ändert.\n` +
                         '||** ℹ️ Du bekommst den Ping nur, wemm du die `Spawner Price` Rolle hast. **|| '
                     )
                 );

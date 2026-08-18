@@ -177,7 +177,7 @@ module.exports = async function handleButton(interaction) {
         const freigebenContainer = new ContainerBuilder()
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
-                    `## 🔒 Trade freigegeben\n\n` +
+                    `## 🔓 Trade freigegeben\n\n` +
                     `<@${interaction.user.id}> hat den Handel #${trade.handNummer} wieder freigegeben.\n` +
                     `Jeder Trader kann ihn jetzt neu claimen.`
                 )
