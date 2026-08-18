@@ -106,8 +106,10 @@ client.on('interactionCreate', async (interaction) => {
             // --- /setup spawner ---
             if (interaction.commandName === 'setup') {
                 if (interaction.options.getSubcommand() === 'spawner') {
+                    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+                    
                     if (!interaction.memberPermissions.has('Administrator')) {
-                        await interaction.reply({ content: '❌ Nur Administratoren können das Setup ausführen.', flags: MessageFlags.Ephemeral });
+                        await interaction.editReply({ content: '❌ Nur Administratoren können das Setup ausführen.' });
                         return;
                     }
 
@@ -130,14 +132,13 @@ client.on('interactionCreate', async (interaction) => {
                         console.log('Fehler beim Aufräumen alter Panels:', err.message);
                     }
 
-                    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
-                    // ⭐ PREISE DYNAMISCH HOLEN
-                    const priceLines = Object.entries(constants.defaultPrices).map(([name, defaultPrices]) => {
-                        const dynPrice = store.getPrice(name, 'ankauf');
-                        const ankauf = dynPrice === 'Stop' ? 'STOP' : `${dynPrice.toFixed(1)}M`;
-                        const dynVerkauf = store.getPrice(name, 'verkauf');
-                        const verkauf = dynVerkauf === 'Stop' ? 'STOP' : `${dynVerkauf.toFixed(1)}M`;
+                    // ⭐ PREISE DYNAMISCH HOLEN MIT NULL-SCHUTZ
+                    const priceLines = Object.entries(constants.defaultPrices || {}).map(([name, defaultPrices]) => {
+                        const ankaufVal = store.getPrice ? store.getPrice(name, 'ankauf') : constants.defaultPrices[name]?.ankauf || 0;
+                        const verkaufVal = store.getPrice ? store.getPrice(name, 'verkauf') : constants.defaultPrices[name]?.verkauf || 0;
+                        
+                        const ankauf = ankaufVal === 'Stop' ? 'STOP' : `${ankaufVal.toFixed(1)}M`;
+                        const verkauf = verkaufVal === 'Stop' ? 'STOP' : `${verkaufVal.toFixed(1)}M`;
                         const emoji = constants.spawnerEmojis[name] || '📦';
                         return `${emoji} ${name.padEnd(12)} ${ankauf.padStart(10)}  ${verkauf.padStart(10)}`;
                     }).join('\n');
@@ -193,24 +194,16 @@ client.on('interactionCreate', async (interaction) => {
 
             // --- /trader-stats ---
             if (interaction.commandName === 'trader-stats') {
+                await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+                
                 const targetUser = interaction.options.getUser('trader') || interaction.user;
                 
-                if (!store.traderStats) {
-                    console.error('❌ store.traderStats ist undefined!');
-                    await interaction.reply({
-                        content: '❌ Interne Fehler - Trader-Stats nicht geladen.',
-                        flags: MessageFlags.Ephemeral
-                    });
-                    return;
-                }
-                
-                const stats = store.traderStats[targetUser.id];
+                // ⭐ NULL-SCHUTZ FÜR traderStats
+                const traderStats = store.traderStats || {};
+                const stats = traderStats[targetUser.id];
 
                 if (!stats || stats.completedTrades === 0) {
-                    await interaction.reply({
-                        content: `❌ <@${targetUser.id}> hat noch keine abgeschlossenen Trades.`,
-                        flags: MessageFlags.Ephemeral
-                    });
+                    await interaction.editReply({ content: `❌ <@${targetUser.id}> hat noch keine abgeschlossenen Trades.` });
                     return;
                 }
 
@@ -218,7 +211,7 @@ client.on('interactionCreate', async (interaction) => {
                     ? (stats.totalStars / stats.starCount).toFixed(1)
                     : 'N/A';
 
-                const profit = stats.totalEarned - stats.totalSpent;
+                const profit = (stats.totalEarned || 0) - (stats.totalSpent || 0);
                 const profitEmoji = profit >= 0 ? '📈' : '📉';
                 const profitStr = profit >= 0 ? `+${profit.toFixed(1)}M` : `${profit.toFixed(1)}M`;
 
@@ -235,13 +228,13 @@ client.on('interactionCreate', async (interaction) => {
                     .addTextDisplayComponents(
                         new TextDisplayBuilder().setContent(
                             `## 💵 • Money\n\n` +
-                            `**💰 Gesamtvolumen:** ${stats.totalVolume.toFixed(1)}M\n` +
-                            `**➕ Eingenommen (Ankauf):** ${stats.totalEarned.toFixed(1)}M\n` +
-                            `**➖ Ausgezahlt (Verkauf):** ${stats.totalSpent.toFixed(1)}M\n`
+                            `**💰 Gesamtvolumen:** ${(stats.totalVolume || 0).toFixed(1)}M\n` +
+                            `**➕ Eingenommen (Ankauf):** ${(stats.totalEarned || 0).toFixed(1)}M\n` +
+                            `**➖ Ausgezahlt (Verkauf):** ${(stats.totalSpent || 0).toFixed(1)}M\n`
                         )
                     );
 
-                await interaction.reply({
+                await interaction.editReply({
                     components: [statsContainer],
                     flags: MessageFlags.IsComponentsV2
                 });
@@ -250,25 +243,18 @@ client.on('interactionCreate', async (interaction) => {
 
             // --- /trader-top ---
             if (interaction.commandName === 'trader-top') {
-                if (!store.traderStats) {
-                    console.error('❌ store.traderStats ist undefined!');
-                    await interaction.reply({
-                        content: '❌ Interne Fehler - Trader-Stats nicht geladen.',
-                        flags: MessageFlags.Ephemeral
-                    });
-                    return;
-                }
+                await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+                
+                // ⭐ NULL-SCHUTZ FÜR traderStats
+                const traderStats = store.traderStats || {};
 
-                const allStats = Object.entries(store.traderStats)
+                const allStats = Object.entries(traderStats)
                     .filter(([, s]) => s && s.completedTrades > 0)
                     .sort((a, b) => b[1].completedTrades - a[1].completedTrades)
                     .slice(0, 10);
 
                 if (allStats.length === 0) {
-                    await interaction.reply({
-                        content: '❌ Noch keine abgeschlossenen Trades vorhanden.',
-                        flags: MessageFlags.Ephemeral
-                    });
+                    await interaction.editReply({ content: '❌ Noch keine abgeschlossenen Trades vorhanden.' });
                     return;
                 }
 
@@ -276,7 +262,7 @@ client.on('interactionCreate', async (interaction) => {
                 const leaderboard = allStats.map(([userId, s], i) => {
                     const medal = medals[i] || `**${i + 1}.**`;
                     const avg = s.starCount > 0 ? (s.totalStars / s.starCount).toFixed(1) : 'N/A';
-                    return `${medal} <@${userId}> — ${s.completedTrades} Trades | ⭐ ${avg} | 💎 ${s.totalVolume.toFixed(1)}M`;
+                    return `${medal} <@${userId}> — ${s.completedTrades} Trades | ⭐ ${avg} | 💎 ${(s.totalVolume || 0).toFixed(1)}M`;
                 }).join('\n');
 
                 const topContainer = new ContainerBuilder()
@@ -288,15 +274,14 @@ client.on('interactionCreate', async (interaction) => {
                         )
                     );
 
-                await interaction.reply({
+                await interaction.editReply({
                     components: [topContainer],
                     flags: MessageFlags.IsComponentsV2
                 });
                 return;
             }
 
-            // ⭐ EXTERN COMMANDS (aus src/commands/)
-            // Wird automatisch geladen oben über interaction.isChatInputCommand()
+            // ⭐ EXTERN COMMANDS (setprice, toggletrade) — WIRD AUTOMATISCH GELADEN
         }
 
         // ==========================================
@@ -316,7 +301,17 @@ client.on('interactionCreate', async (interaction) => {
     } catch (error) {
         console.error('Fehler bei Interaction:', error);
         if (!interaction.replied && !interaction.deferred) {
-            await interaction.reply({ content: '❌ Ein Fehler ist aufgetreten.', flags: MessageFlags.Ephemeral }).catch(() => {});
+            try {
+                await interaction.reply({ content: '❌ Ein Fehler ist aufgetreten.', flags: MessageFlags.Ephemeral });
+            } catch (e) {
+                // Ignorieren wenn bereits geantwortet
+            }
+        } else if (interaction.deferred && !interaction.replied) {
+            try {
+                await interaction.editReply({ content: '❌ Ein Fehler ist aufgetreten.' });
+            } catch (e) {
+                // Ignorieren
+            }
         }
     }
 });
