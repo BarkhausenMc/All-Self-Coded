@@ -44,13 +44,21 @@ module.exports = {
         const typ = interaction.options.getString('typ');
         const preis = interaction.options.getNumber('preis');
 
+        // Alten Preis merken
+        const oldPrice = store.getPrice(spawner, typ);
+
+        // Neuen Preis setzen
         store.setPrice(spawner, typ, preis);
+
+        // ⭐ PRICE PANEL AUTO-UPDATE
+        await store.updatePricePanel(interaction.channel);
 
         const emoji = constants.spawnerEmojis[spawner] || '📦';
         const typLabel = typ === 'ankauf' ? '🛒 ANKAUF' : '💰 VERKAUF';
+        const oldStr = oldPrice === 'Stop' ? 'GESTOPT' : `${oldPrice.toFixed(1)}M`;
 
         await interaction.reply({
-            content: `✅ Preis gesetzt!\n${emoji} ${spawner} — ${typLabel}: **${preis.toFixed(1)}M**`,
+            content: `✅ Preis aktualisiert!\n${emoji} ${spawner} — ${typLabel}: ~~${oldStr}~~ → **${preis.toFixed(1)}M**\n\n📊 Das Preis-Panel wurde automatisch aktualisiert!`,
             flags: 64
         });
     }

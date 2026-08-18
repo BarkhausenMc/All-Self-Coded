@@ -13,5 +13,6 @@ module.exports = {
     TRADER_ADMIN_ROLE_ID: process.env.TRADER_ADMIN_ROLE_ID,
     CHANNEL_ID: process.env.CHANNEL_ID,
     VOUCH_CHANNEL_ID: process.env.VOUCH_CHANNEL_ID,
-    LOG_CHANNEL_ID: process.env.LOG_CHANNEL_ID
+    LOG_CHANNEL_ID: process.env.LOG_CHANNEL_ID,
+    ANNOUNCE_CHANNEL_ID: process.env.ANNOUNCE_CHANNEL_ID
 };

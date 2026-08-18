@@ -1,5 +1,14 @@
 const fs = require('fs');
 const path = require('path');
+const {
+    ContainerBuilder,
+    TextDisplayBuilder,
+    SeparatorBuilder,
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle,
+    MessageFlags
+} = require('discord.js');
 const constants = require('../config/constants');
 
 const DATA_FILE = path.join(__dirname, '../../data/database.json');
@@ -41,11 +50,9 @@ function saveData() {
 }
 
 function getPrice(spawnerName, type) {
-    // Prüfe zuerst ob ein Stop-Eintrag existiert
     if (data.prices && data.prices[spawnerName] && data.prices[spawnerName][type] !== undefined) {
         return data.prices[spawnerName][type];
     }
-    // Default aus constants
     return constants.prices[spawnerName]?.[type] || 0;
 }
 
@@ -53,7 +60,6 @@ function setPrice(spawnerName, type, value) {
     if (!data.prices) data.prices = {};
     if (!data.prices[spawnerName]) data.prices[spawnerName] = {};
     data.prices[spawnerName][type] = value;
-    // Auch in constants updaten damit andere Dateien sofort den neuen Preis sehen
     if (constants.prices[spawnerName]) {
         constants.prices[spawnerName][type] = value;
     }
@@ -80,6 +86,85 @@ function togglePrice(spawnerName, type) {
     return data.prices[spawnerName][type];
 }
 
+// ⭐ PANEL MESSAGE ID SPEICHERN
+function getPanelMessageId() {
+    return data.panelMessageId || null;
+}
+
+function setPanelMessageId(messageId) {
+    data.panelMessageId = messageId;
+    saveData();
+}
+
+// ⭐ PRICE PANEL BUILDER (wiederverwendbar)
+function buildPricePanel() {
+    const priceLines = Object.entries(constants.prices).map(([name, defaultPrices]) => {
+        const dynAnkauf = getPrice(name, 'ankauf');
+        const dynVerkauf = getPrice(name, 'verkauf');
+        
+        const ankauf = dynAnkauf === 'Stop' ? 'STOP' : `${dynAnkauf.toFixed(1)}M`;
+        const verkauf = dynVerkauf === 'Stop' ? 'STOP' : `${dynVerkauf.toFixed(1)}M`;
+        const emoji = constants.spawnerEmojis[name] || '📦';
+        return `${emoji} ${name.padEnd(12)} ${ankauf.padStart(10)}  ${verkauf.padStart(10)}`;
+    }).join('\n');
+
+    const container = new ContainerBuilder()
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent('## :shopping_cart: • SPAWNER TRADING • :moneybag:\n*Yayks Spawner Trading*\n||*Only Trusted Trader, Faire Preise :purple_heart:*||')
+        )
+        .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+                '```\n' +
+                'SPAWNER      🛒ANKAUF    💰VERKAUF\n' +
+                '────────────────────────────────────\n' +
+                priceLines + '\n' +
+                '```'
+            )
+        )
+        .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent('💰 **VERKAUFEN** — Du **verkaufst** uns deine Spawner')
+        )
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent('🛒 **ANKAUF** — Du **kaufst** unsere Spawner')
+        )
+        .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent('Klicke unten auf den `💰 VERKAUFEN` oder `🛒 ANKAUF` Button,\num einen Trade zu Starten.')
+        );
+
+    const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId('spawner_ankaufen')
+            .setLabel('Spawner Kaufen')
+            .setStyle(ButtonStyle.Primary)
+            .setEmoji('🛒'),
+        new ButtonBuilder()
+            .setCustomId('spawner_verkaufen')
+            .setLabel('Spawner Verkaufen')
+            .setStyle(ButtonStyle.Success)
+            .setEmoji('💰')
+    );
+
+    return [container, row];
+}
+
+// ⭐ AUTO-UPDATE DES PANELS
+async function updatePricePanel(channel) {
+    const messageId = getPanelMessageId();
+    if (!messageId) return;
+    
+    try {
+        const msg = await channel.messages.fetch(messageId);
+        const components = buildPricePanel();
+        await msg.edit({ components, flags: MessageFlags.IsComponentsV2 });
+        console.log('✅ Price Panel auto-updated!');
+    } catch (err) {
+        console.log('Panel update fehlgeschlagen:', err.message);
+    }
+}
+
 loadData();
 
 module.exports = {
@@ -91,5 +176,9 @@ module.exports = {
     reload: loadData,
     getPrice,
     setPrice,
-    togglePrice
+    togglePrice,
+    getPanelMessageId,
+    setPanelMessageId,
+    buildPricePanel,
+    updatePricePanel
 };

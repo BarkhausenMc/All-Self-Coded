@@ -101,7 +101,7 @@ client.on('interactionCreate', async (interaction) => {
         // ==========================================
         if (interaction.isChatInputCommand()) {
 
-            // ⭐ EXTERNE COMMANDS (setprice, toggletrade, etc.)
+            // ⭐ EXTERNE COMMANDS (setprice, toggletrade, announce)
             if (commandMap.has(interaction.commandName)) {
                 const command = commandMap.get(interaction.commandName);
                 await command.execute(interaction);
@@ -137,59 +137,16 @@ client.on('interactionCreate', async (interaction) => {
                         console.log('Fehler beim Aufräumen alter Panels:', err.message);
                     }
 
-// ⭐ NEU (funktioniert):
-const priceLines = Object.entries(constants.prices).map(([name, defaultPrices]) => {
-    const dynAnkauf = store.getPrice(name, 'ankauf');
-    const dynVerkauf = store.getPrice(name, 'verkauf');
-    
-    const ankauf = dynAnkauf === 'Stop' ? 'STOP' : `${dynAnkauf.toFixed(1)}M`;
-    const verkauf = dynVerkauf === 'Stop' ? 'STOP' : `${dynVerkauf.toFixed(1)}M`;
-    const emoji = constants.spawnerEmojis[name] || '📦';
-    return `${emoji} ${name.padEnd(12)} ${ankauf.padStart(10)}  ${verkauf.padStart(10)}`;
-}).join('\n');
-                    const container = new ContainerBuilder()
-                        .addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent('## :shopping_cart: • SPAWNER TRADING • :moneybag:\n*Yayks Spawner Trading*\n||*Only Trusted Trader, Faire Preise :purple_heart:*||')
-                        )
-                        .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
-                        .addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent(
-                                '```\n' +
-                                'SPAWNER      🛒ANKAUF    💰VERKAUF\n' +
-                                '────────────────────────────────────\n' +
-                                priceLines + '\n' +
-                                '```'
-                            )
-                        )
-                        .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
-                        .addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent('💰 **VERKAUFEN** — Du **verkaufst** uns deine Spawner')
-                        )
-                        .addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent('🛒 **ANKAUF** — Du **kaufst** unsere Spawner')
-                        )
-                        .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
-                        .addTextDisplayComponents(
-                            new TextDisplayBuilder().setContent('Klicke unten auf den `💰 VERKAUFEN` oder `🛒 ANKAUF` Button,\num einen Trade zu Starten.')
-                        );
+                    // ⭐ PANEL ÜBER store.buildPricePanel() ERSTELLEN
+                    const components = store.buildPricePanel();
 
-                    const row = new ActionRowBuilder().addComponents(
-                        new ButtonBuilder()
-                            .setCustomId('spawner_ankaufen')
-                            .setLabel('Spawner Kaufen')
-                            .setStyle(ButtonStyle.Primary)
-                            .setEmoji('🛒'),
-                        new ButtonBuilder()
-                            .setCustomId('spawner_verkaufen')
-                            .setLabel('Spawner Verkaufen')
-                            .setStyle(ButtonStyle.Success)
-                            .setEmoji('💰')
-                    );
-
-                    await interaction.channel.send({
-                        components: [container, row],
+                    const panelMsg = await interaction.channel.send({
+                        components,
                         flags: MessageFlags.IsComponentsV2
                     });
+
+                    // ⭐ PANEL MESSAGE ID SPEICHERN
+                    store.setPanelMessageId(panelMsg.id);
 
                     await interaction.editReply({ content: '✅ Spawner Trading Panel gesendet!' });
                     return;
