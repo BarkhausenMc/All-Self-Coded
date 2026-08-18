@@ -18,8 +18,16 @@ module.exports = {
         ),
 
     async execute(interaction) {
+        // ⭐ SOFORT DEFERREPLY (BEVOR ALLES ANDERE!)
+        try {
+            await interaction.deferReply({ flags: 64 });
+        } catch (err) {
+            console.log('❌ deferReply fehlgeschlagen (Interaction abgelaufen?):', err.message);
+            return;
+        }
+
         if (!interaction.member.roles.cache.has(constants.TRADER_ADMIN_ROLE_ID)) {
-            await interaction.reply({ content: '❌ Nur Trader Admins dürfen Ankündigungen machen!', flags: 64 });
+            await interaction.editReply({ content: '❌ Nur Trader Admins dürfen Ankündigungen machen!' });
             return;
         }
 
@@ -29,7 +37,7 @@ module.exports = {
         const recentChanges = store.getRecentPriceChanges(5);
 
         if (recentChanges.length === 0) {
-            await interaction.reply({ content: '❌ Keine Preisänderungen in den letzten 5 Minuten! Nutze erst `/setprice` oder `/toggletrade`.' });
+            await interaction.editReply({ content: '❌ Keine Preisänderungen in den letzten 5 Minuten! Nutze erst `/setprice` oder `/toggletrade`.' });
             return;
         }
 
@@ -40,15 +48,14 @@ module.exports = {
             const oldStr = change.oldValue === 'Stop' ? 'GESTOPPT' : `${change.oldValue.toFixed(1)}M`;
             const newStr = change.newValue === 'Stop' ? 'GESTOPPT' : `${change.newValue.toFixed(1)}M`;
             
-            const isNewStop = change.newValue === 'Stop';
-            const wasStop = change.oldValue === 'Stop';
-            
             let arrow;
-            if (isNewStop) arrow = '🔴';
-            else if (wasStop) arrow = '🟢';
-            else if (change.newValue > change.oldValue) arrow = '📈';
-            else if (change.newValue < change.oldValue) arrow = '📉';
-            else arrow = '➡️';
+            if (change.newValue === 'Stop') arrow = '🔴';
+            else if (change.oldValue === 'Stop') arrow = '🟢';
+            else if (typeof change.newValue === 'number' && typeof change.oldValue === 'number') {
+                if (change.newValue > change.oldValue) arrow = '📈';
+                else if (change.newValue < change.oldValue) arrow = '📉';
+                else arrow = '➡️';
+            } else arrow = '➡️';
             
             return `### ${emoji} ${change.spawner} — ${typLabel}\n${arrow} ~~${oldStr}~~ → **${newStr}**\n*vor <t:${Math.floor(change.timestamp / 1000)}:R>*`;
         }).join('\n\n');
@@ -79,12 +86,12 @@ module.exports = {
         const channel = interaction.guild.channels.cache.get(announceChannelId);
 
         if (!channel) {
-            await interaction.reply({ content: '❌ Ankündigungs-Channel nicht gefunden!' });
+            await interaction.editReply({ content: '❌ Ankündigungs-Channel nicht gefunden!' });
             return;
         }
 
-        // ⭐ SOFORT REPLY
-        await interaction.reply({ content: `✅ Ankündigung wird gesendet...`, flags: 64 });
+        // ⭐ ZUERST DUMMY-REPLY (damit der User weiß was los ist)
+        await interaction.editReply({ content: '✅ Ankündigung wird gesendet...' });
 
         // ⭐ DANN ERST SENDEN
         await channel.send({

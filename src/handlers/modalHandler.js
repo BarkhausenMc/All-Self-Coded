@@ -44,7 +44,7 @@ module.exports = async function handleModal(interaction) {
     const totalPrice = pricePerUnit * parsedAmount;
 
     const thread = await interaction.channel.threads.create({
-        name: `${emoji} ${action} - ${spawnerEmoji} ${spawnerType} - 📦 Menge: ${amount} - ${handNummer}`,
+        name: `${emoji} ${action} - ${spawnerEmoji} ${spawnerType} - 📦 Menge: ${amount} - #${handNummer}`,
         type: ChannelType.PrivateThread,
         invitable: false
     });

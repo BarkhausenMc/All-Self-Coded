@@ -20,7 +20,7 @@ function findTrade(channelId) {
     console.warn(`Verfügbare Keys:`, Object.keys(store.trades));
     return null;
 }
-
+//nach vouch
 async function logTrade(guild, trade, status) {
     const logChannel = guild.channels.cache.get(constants.LOG_CHANNEL_ID);
     if (!logChannel) return;
