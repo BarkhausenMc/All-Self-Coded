@@ -50,10 +50,8 @@ module.exports = {
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
                     `## 📢 ${titel}\n\n` +
-                    `${rolePing}` +
                     `> *Die Preise wurden aktualisiert!*\n` +
-                    `> *Stand: <t:${Math.floor(Date.now() / 1000)}:R>*\n\n` +
-                    `**Geändert von:** <@${interaction.user.id}>`
+                    `> *Stand: <t:${Math.floor(Date.now() / 1000)}:R>*\n\n` 
                 )
             )
             .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
@@ -63,8 +61,8 @@ module.exports = {
             .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
-                    `*Bei Fragen wendet euch an einen Trader Admin.*\n` +
-                    `*Um einen Trade zu starten, gehe ins Trading Panel.*`
+                    `*Um einen Trade zu starten, gehe den #spawner Channel*` +
+                    `||** ${rolePing} **||`
                 )
             );
 
