@@ -167,13 +167,20 @@ module.exports = async function handleButton(interaction) {
         store.save();
 
         await updateTradeMessage(interaction.channel, trade);
+
+        // ✅ Nicht-Ephemeral Container
         const claimContainer = new ContainerBuilder()
-    .addTextDisplayComponents(
-        new TextDisplayBuilder().setContent(
-            `## ✅ Trade geclaimt\n\n` +
-            `<@${interaction.user.id}> hat den Handel übernommen!`
-        )
-    );
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(
+                    `## ✅ Trade geclaimt\n\n` +
+                    `<@${interaction.user.id}> hat den Handel #${trade.handNummer} übernommen.`
+                )
+            );
+
+        await interaction.reply({
+            components: [claimContainer],
+            flags: MessageFlags.IsComponentsV2
+        });
         return;
     }
 
@@ -195,13 +202,21 @@ module.exports = async function handleButton(interaction) {
         store.save();
 
         await updateTradeMessage(interaction.channel, trade);
+
+        // 🔓 Nicht-Ephemeral Container
         const freigebenContainer = new ContainerBuilder()
-    .addTextDisplayComponents(
-        new TextDisplayBuilder().setContent(
-            `## 🔓 Trade freigegeben\n\n` +
-            `Der Trade wurde freigegeben! Jeder Trader kann ihn jetzt neu claimen.`
-        )
-    );
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(
+                    `## 🔒 Trade freigegeben\n\n` +
+                    `<@${interaction.user.id}> hat den Handel #${trade.handNummer} wieder freigegeben.\n` +
+                    `Jeder Trader kann ihn jetzt neu claimen.`
+                )
+            );
+
+        await interaction.reply({
+            components: [freigebenContainer],
+            flags: MessageFlags.IsComponentsV2
+        });
         return;
     }
 
