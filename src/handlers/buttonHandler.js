@@ -49,47 +49,22 @@ async function forceCloseVouchWithChannel(channel, trade, guild) {
         if (trade.vouchEntries && trade.vouchEntries.length > 0) {
             const vouchChannel = guild.channels.cache.get(constants.VOUCH_CHANNEL_ID);
             if (vouchChannel) {
-                const customerVouch = trade.vouchEntries.find(v => v.reviewerId === trade.kundeId);
-                const traderVouch = trade.vouchEntries.find(v => v.reviewerId === trade.claimedBy);
+                let content = `## ${trade.emoji} • Handel #${trade.handNummer}\n\n`;
+                content += `**${trade.emoji} Aktion:** ${trade.action}\n`;
+                content += `**${trade.spawnerEmoji} Spawner:** ${trade.spawnerType}\n`;
+                content += `**📦 Menge:** ${trade.amount}\n`;
+                content += `**💰 Gesamtpreis:** ${trade.totalPrice.toFixed(1)}M\n\n`;
+                content += `**👤 Kunde:** <@${trade.kundeId}>\n`;
+                content += `**🤝 Trader:** <@${trade.claimedBy}>\n\n`;
 
-                const customerStars = customerVouch ? '⭐'.repeat(customerVouch.rating) : '— Keine Bewertung';
-                const traderStars = traderVouch ? '⭐'.repeat(traderVouch.rating) : '— Keine Bewertung';
+                for (const vouch of trade.vouchEntries) {
+                    const role = vouch.reviewerId === trade.kundeId ? 'Kunde' : 'Trader';
+                    const stars = '⭐'.repeat(vouch.rating);
+                    content += `### 📝 Bewertung von ${role}\n${stars} (${vouch.rating}/5)\n> ${vouch.text}\n\n`;
+                }
 
                 const vouchContainer = new ContainerBuilder()
-                    .addTextDisplayComponents(
-                        new TextDisplayBuilder().setContent(
-                            `## ✅ Handel abgeschlossen • #${trade.handNummer}\n\n` +
-                            `**👤 Kunde:** <@${trade.kundeId}>\n` +
-                            `**🤝 Trader:** <@${trade.claimedBy || '-'}>`
-                        )
-                    )
-                    .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
-                    .addTextDisplayComponents(
-                        new TextDisplayBuilder().setContent(
-                            `**${trade.emoji} Geschäft:** ${trade.action} ||(aus Sicht des Kunden)||\n` +
-                            `**${trade.spawnerEmoji} Spawner:** ${trade.spawnerType}\n` +
-                            `**📦 Menge:** ${trade.amount}\n` +
-                            `**💰 Gesamtpreis:** ${trade.totalPrice.toFixed(1)}M\n`
-                        )
-                    )
-                    .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
-                    .addTextDisplayComponents(
-                        new TextDisplayBuilder().setContent(
-                            `### 📝 Bewertung von Kunde → Trader\n` +
-                            (customerVouch
-                                ? `${customerStars} (${customerVouch.rating}/5)\n> ${customerVouch.text}`
-                                : `— Keine Bewertung abgegeben`)
-                        )
-                    )
-                    .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
-                    .addTextDisplayComponents(
-                        new TextDisplayBuilder().setContent(
-                            `### 📝 Bewertung von Trader → Kunde\n` +
-                            (traderVouch
-                                ? `${traderStars} (${traderVouch.rating}/5)\n> ${traderVouch.text}`
-                                : `— Keine Bewertung abgegeben`)
-                        )
-                    );
+                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(content));
 
                 await vouchChannel.send({ components: [vouchContainer], flags: MessageFlags.IsComponentsV2 });
             }
@@ -135,25 +110,27 @@ async function forceCloseVouchWithChannel(channel, trade, guild) {
 }
 
 module.exports = async function handleButton(interaction) {
-    // ⚠️ IMMERSOFORT DEFERNACH DEM BUTTON-KLICK
-    await interaction.deferUpdate();
 
     // === CLAIM ===
     if (interaction.customId === 'claim') {
         const trade = findTrade(interaction.channelId);
 
         if (!trade) {
-            await interaction.editReply({ content: '❌ Trade nicht gefunden.' });
+            try {
+                await interaction.reply({ content: '❌ Trade nicht gefunden.', flags: MessageFlags.Ephemeral });
+            } catch (e) {
+                console.warn('Claim reply failed:', e.message);
+            }
             return;
         }
 
         if (trade.claimedBy) {
-            await interaction.editReply({ content: `❌ Bereits von <@${trade.claimedBy}> geclaimt.` });
+            await interaction.reply({ content: `❌ Bereits von <@${trade.claimedBy}> geclaimt.`, flags: MessageFlags.Ephemeral });
             return;
         }
 
         if (!interaction.member.roles.cache.has(constants.TRADER_ROLE_ID)) {
-            await interaction.editReply({ content: '❌ Nur Trader dürfen Trades claimen.' });
+            await interaction.reply({ content: '❌ Nur Trader dürfen Trades claimen.', flags: MessageFlags.Ephemeral });
             return;
         }
 
@@ -162,11 +139,19 @@ module.exports = async function handleButton(interaction) {
 
         try {
             await updateTradeMessage(interaction.channel, trade);
-            await interaction.editReply({ content: `✅ Du hast den Trade geclaimt!` });
         } catch (err) {
             console.error('updateTradeMessage error (claim):', err.message);
-            await interaction.editReply({ content: '✅ Trade geclaimt (mit Fehler beim Update).' });
         }
+
+        const claimContainer = new ContainerBuilder()
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(
+                    `## ✅ Trade geclaimt\n\n` +
+                    `<@${interaction.user.id}> hat den Handel #${trade.handNummer} übernommen.`
+                )
+            );
+
+        await interaction.reply({ components: [claimContainer], flags: MessageFlags.IsComponentsV2 });
         return;
     }
 
@@ -175,12 +160,12 @@ module.exports = async function handleButton(interaction) {
         const trade = findTrade(interaction.channelId);
 
         if (!trade || !trade.claimedBy) {
-            await interaction.editReply({ content: '❌ Trade ist nicht geclaimt.' });
+            await interaction.reply({ content: '❌ Trade ist nicht geclaimt.', flags: MessageFlags.Ephemeral });
             return;
         }
 
         if (interaction.user.id !== trade.claimedBy) {
-            await interaction.editReply({ content: `❌ Nur <@${trade.claimedBy}> kann den Trade freigeben.` });
+            await interaction.reply({ content: `❌ Nur <@${trade.claimedBy}> kann den Trade freigeben.`, flags: MessageFlags.Ephemeral });
             return;
         }
 
@@ -189,11 +174,20 @@ module.exports = async function handleButton(interaction) {
 
         try {
             await updateTradeMessage(interaction.channel, trade);
-            await interaction.editReply({ content: `✅ Trade freigegeben!` });
         } catch (err) {
             console.error('updateTradeMessage error (freigeben):', err.message);
-            await interaction.editReply({ content: '✅ Trade freigegeben (mit Fehler beim Update).' });
         }
+
+        const freigebenContainer = new ContainerBuilder()
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(
+                    `## 🔓 Trade freigegeben\n\n` +
+                    `<@${interaction.user.id}> hat den Handel #${trade.handNummer} wieder freigegeben.\n` +
+                    `Jeder Trader kann ihn jetzt neu claimen.`
+                )
+            );
+
+        await interaction.reply({ components: [freigebenContainer], flags: MessageFlags.IsComponentsV2 });
         return;
     }
 
@@ -202,14 +196,16 @@ module.exports = async function handleButton(interaction) {
         const trade = findTrade(interaction.channelId);
 
         if (!trade || !trade.claimedBy) {
-            await interaction.editReply({ content: '❌ Der Trade muss erst geclaimt werden.' });
+            await interaction.reply({ content: '❌ Der Trade muss erst geclaimt werden.', flags: MessageFlags.Ephemeral });
             return;
         }
 
         if (interaction.user.id !== trade.claimedBy) {
-            await interaction.editReply({ content: `❌ Nur <@${trade.claimedBy}> darf den Trade abschließen.` });
+            await interaction.reply({ content: `❌ Nur <@${trade.claimedBy}> darf den Trade abschließen.`, flags: MessageFlags.Ephemeral });
             return;
         }
+
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         trade.awaitingVouch = true;
         trade.vouches = [];
@@ -218,10 +214,8 @@ module.exports = async function handleButton(interaction) {
 
         try {
             await updateTradeMessage(interaction.channel, trade);
-            await interaction.editReply({ content: `✅ Trade abgeschlossen — bitte bewertet euch gegenseitig!` });
         } catch (err) {
             console.error('updateTradeMessage error (complete):', err.message);
-            await interaction.editReply({ content: '✅ Trade abgeschlossen (mit Fehler beim Update).' });
         }
 
         const starSelect = new StringSelectMenuBuilder()
@@ -241,9 +235,9 @@ module.exports = async function handleButton(interaction) {
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
                     `## 📝 • Trade Bewertung\n\n` +
-                    `Bitte bewertet euch gegenseitig!\n` +
-                    `Wähle unten deine Sterne-Bewertung aus.\n` +
-                    `Danach kannst du noch einen Text schreiben.\n\n` +
+                    `Bitte **bewertet** euch gegenseitig!\n` +
+                    `Wähle unten deine **Sterne-Bewertung** aus.\n` +
+                    `**Anmerkung** oder **Problem**?\nSchreib sie nach der Sterne-Bewertung einfach in das Pop Up Feld\n\n` +
                     `**Kunde:** <@${trade.kundeId}>\n` +
                     `**Trader:** <@${trade.claimedBy}>\n\n` +
                     `⏱️ *Das Ticket schließt automatisch in 5 Minuten.*`
@@ -252,6 +246,8 @@ module.exports = async function handleButton(interaction) {
             .addActionRowComponents(vouchRow);
 
         await interaction.channel.send({ components: [vouchContainer], flags: MessageFlags.IsComponentsV2 });
+
+        await interaction.editReply({ content: `✅ Trade abgeschlossen — bitte bewertet euch gegenseitig!` });
 
         const channelId = String(interaction.channelId);
         const guildId = interaction.guild.id;
@@ -282,7 +278,14 @@ module.exports = async function handleButton(interaction) {
         const trade = findTrade(channelIdStr);
 
         if (!trade) {
-            await interaction.editReply({ content: '❌ Trade nicht gefunden oder bereits geschlossen.' });
+            try {
+                await interaction.reply({
+                    content: '❌ Trade nicht gefunden oder bereits geschlossen.',
+                    flags: MessageFlags.Ephemeral
+                });
+            } catch (e) {
+                console.warn('Abbruch reply failed:', e.message);
+            }
             return;
         }
 
@@ -291,6 +294,8 @@ module.exports = async function handleButton(interaction) {
 
         trade.cancelled = true;
         store.save();
+
+        await interaction.deferUpdate();
 
         try {
             await updateTradeMessage(interaction.channel, trade);
@@ -327,10 +332,12 @@ module.exports = async function handleButton(interaction) {
                     )
                 );
 
-            await interaction.editReply({ components: [confirmationContainer], flags: MessageFlags.IsComponentsV2 });
+            await interaction.followUp({
+                components: [confirmationContainer],
+                flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral
+            });
         } catch (err) {
             console.error('Send error (abbruch):', err.message);
-            await interaction.editReply({ content: '✅ Abbruch-Request erhalten (Fehler beim Senden).' });
         }
 
         const guild = interaction.guild;
@@ -374,7 +381,7 @@ module.exports = async function handleButton(interaction) {
             )
             .addActionRowComponents(row);
 
-        await interaction.editReply({ components: [container] });
+        await interaction.reply({ components: [container], flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2 });
         return;
     }
 
@@ -402,7 +409,7 @@ module.exports = async function handleButton(interaction) {
             )
             .addActionRowComponents(row);
 
-        await interaction.editReply({ components: [container] });
+        await interaction.reply({ components: [container], flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2 });
         return;
     }
 };
