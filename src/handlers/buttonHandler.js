@@ -308,8 +308,8 @@ module.exports = async function handleButton(interaction) {
         const ankaufOptions = Object.entries(constants.prices).map(([name, prices]) => {
             const isStopped = prices.ankauf === 'Stop' || prices.ankauf === undefined;
             return {
-                label: `${constants.spawnerEmojis[name] || '📦'} ${name} Spawner`,
-                description: isStopped ? '⚠️ Ankauf derzeit GESPERRT' : `Preis: ${prices.ankauf.toFixed(1)}M`,
+                label: `${name} Spawner`,
+                description: isStopped ? '⚠️ Ankauf derzeit GESTOPT' : `Preis: ${prices.ankauf.toFixed(1)}M`,
                 value: name, emoji: constants.spawnerEmojis[name] || '📦'
             };
         });
@@ -336,8 +336,8 @@ module.exports = async function handleButton(interaction) {
         const verkaufOptions = Object.entries(constants.prices).map(([name, prices]) => {
             const isStopped = prices.verkauf === 'Stop' || prices.verkauf === undefined;
             return {
-                label: `${constants.spawnerEmojis[name] || '📦'} ${name} Spawner`,
-                description: isStopped ? '⚠️ Verkauf derzeit GESPERRT' : `Du bekommst: ${prices.verkauf.toFixed(1)}M`,
+                label: `${name} Spawner`,
+                description: isStopped ? '⚠️ Verkauf derzeit GESTOPT' : `Du bekommst: ${prices.verkauf.toFixed(1)}M`,
                 value: name, emoji: constants.spawnerEmojis[name] || '📦'
             };
         });
