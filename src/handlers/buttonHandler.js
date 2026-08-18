@@ -10,6 +10,10 @@ const {
 const store = require('../data/store');
 const constants = require('../config/constants');
 const updateTradeMessage = require('../utils/updateTradeMessage');
+const buildTradeContainer = require('../utils/buildTradeContainer');
+
+// === TIMEOUT MAP (nicht persistent) ===
+const vouchTimeouts = new Map();
 
 // === HELPER: Trade finden ===
 function findTrade(channelId) {
@@ -54,6 +58,90 @@ async function logTrade(interaction, trade, status) {
     });
 }
 
+// === HELPER: Timeout-Cleanup bei Vouch-Force-Close ===
+async function forceCloseVouch(interaction, trade) {
+    // Timeout löschen
+    const timeout = vouchTimeouts.get(interaction.channelId);
+    if (timeout) clearTimeout(timeout);
+    vouchTimeouts.delete(interaction.channelId);
+
+    // Trade als geschlossen markieren
+    trade.awaitingVouch = false;
+    trade.closed = true;
+    store.save();
+
+    // Nachricht updaten
+    try {
+        await updateTradeMessage(interaction.channel, trade);
+    } catch (err) {}
+
+    // Whatever vouches exist → ins Vouch-Channel posten
+    if (trade.vouchEntries && trade.vouchEntries.length > 0) {
+        const vouchChannel = interaction.guild.channels.cache.get(constants.VOUCH_CHANNEL_ID);
+        if (vouchChannel) {
+            let content = `## ${trade.emoji} • Handel #${trade.handNummer}\n\n`;
+            content += `**${trade.emoji} Aktion:** ${trade.action}\n`;
+            content += `**${trade.spawnerEmoji} Spawner:** ${trade.spawnerType}\n`;
+            content += `**📦 Menge:** ${trade.amount}\n`;
+            content += `**💰 Gesamtpreis:** ${trade.totalPrice.toFixed(1)}M\n\n`;
+            content += `**👤 Kunde:** <@${trade.kundeId}>\n`;
+            content += `**🤝 Trader:** <@${trade.claimedBy}>\n\n`;
+
+            for (const vouch of trade.vouchEntries) {
+                const role = vouch.reviewerId === trade.kundeId ? 'Kunde' : 'Trader';
+                const stars = '⭐'.repeat(vouch.rating);
+                content += `### 📝 Bewertung von ${role}\n${stars} (${vouch.rating}/5)\n> ${vouch.text}\n\n`;
+            }
+
+            const vouchContainer = new ContainerBuilder()
+                .addTextDisplayComponents(new TextDisplayBuilder().setContent(content));
+
+            await vouchChannel.send({
+                components: [vouchContainer],
+                flags: MessageFlags.IsComponentsV2
+            });
+        }
+    }
+
+    // Stats updaten für vorhandene Vouches
+    if (trade.claimedBy && store.traderStats) {
+        if (!store.traderStats[trade.claimedBy]) {
+            store.traderStats[trade.claimedBy] = {
+                completedTrades: 0, totalVolume: 0, totalEarned: 0, totalSpent: 0, totalStars: 0, starCount: 0
+            };
+        }
+        const stats = store.traderStats[trade.claimedBy];
+        stats.completedTrades += 1;
+        stats.totalVolume += trade.totalPrice;
+        if (trade.action === 'Ankauf') stats.totalEarned += trade.totalPrice;
+        else stats.totalSpent += trade.totalPrice;
+
+        const customerVouch = trade.vouchEntries?.find(v => v.reviewerId === trade.kundeId);
+        if (customerVouch) {
+            stats.totalStars += customerVouch.rating;
+            stats.starCount += 1;
+        }
+        store.save();
+    }
+
+    // Loggen
+    const vouchCount = (trade.vouches || []).length;
+    await logTrade(interaction, trade, `✅ ABGESCHLOSSEN (${vouchCount}/2 Bewertungen)`);
+
+    // Countdown + Löschen
+    await interaction.channel.send({ content: `⏳ Dieses Ticket wird in **5 Sekunden** gelöscht...` });
+
+    setTimeout(async () => {
+        try {
+            await interaction.channel.delete();
+            delete store.trades[interaction.channelId];
+            store.save();
+        } catch (err) {
+            console.log('Fehler beim Löschen:', err.message);
+        }
+    }, 5000);
+}
+
 module.exports = async function handleButton(interaction) {
 
     // === CLAIM BUTTON ===
@@ -79,12 +167,11 @@ module.exports = async function handleButton(interaction) {
         store.save();
 
         await updateTradeMessage(interaction.channel, trade);
-
         await interaction.reply({ content: `✅ Du hast den Trade geclaimt!`, flags: MessageFlags.Ephemeral });
         return;
     }
 
-    // === FREIGEBEN BUTTON (Unclaim) ===
+    // === FREIGEBEN BUTTON ===
     if (interaction.customId === 'freigeben') {
         const trade = findTrade(interaction.channelId);
 
@@ -98,17 +185,15 @@ module.exports = async function handleButton(interaction) {
             return;
         }
 
-        // Unclaim → zurück zu Claim + Abbrechen
         trade.claimedBy = null;
         store.save();
 
         await updateTradeMessage(interaction.channel, trade);
-
         await interaction.reply({ content: `🔓 Trade freigegeben! Jeder Trader kann ihn jetzt neu claimen.`, flags: MessageFlags.Ephemeral });
         return;
     }
 
-    // === ALS ANGEKAUFT MARKIEREN → Vouch-Phase ===
+    // === ALS ANGEKAUFT MARKIEREN → Vouch-Phase + 5 MIN TIMEOUT ===
     if (interaction.customId === 'complete') {
         const trade = findTrade(interaction.channelId);
 
@@ -127,7 +212,7 @@ module.exports = async function handleButton(interaction) {
         trade.vouchEntries = [];
         store.save();
 
-        // Original-Nachricht aktualisieren (Buttons verschwinden)
+        // Original-Nachricht updaten (Buttons verschwinden, Status zeigt "Warte auf Bewertungen")
         await updateTradeMessage(interaction.channel, trade);
 
         // Bewertungs-UI senden
@@ -152,7 +237,8 @@ module.exports = async function handleButton(interaction) {
                     `Wähle unten deine Sterne-Bewertung aus.\n` +
                     `Danach kannst du noch einen Text schreiben.\n\n` +
                     `**Kunde:** <@${trade.kundeId}>\n` +
-                    `**Trader:** <@${trade.claimedBy}>`
+                    `**Trader:** <@${trade.claimedBy}>\n\n` +
+                    `⏱️ *Das Ticket schließt automatisch in 5 Minuten.*`
                 )
             )
             .addActionRowComponents(vouchRow);
@@ -163,6 +249,19 @@ module.exports = async function handleButton(interaction) {
         });
 
         await interaction.reply({ content: `✅ Trade abgeschlossen — bitte bewertet euch gegenseitig!`, flags: MessageFlags.Ephemeral });
+
+        // === 5 MINUTEN TIMEOUT ===
+        const channelId = interaction.channelId;
+        const timeout = setTimeout(async () => {
+            console.log(`⏰ Vouch-Timeout für Channel ${channelId} — auto-closing`);
+            const currentTrade = findTrade(channelId);
+            if (!currentTrade || !currentTrade.awaitingVouch) return;
+
+            await interaction.channel.send({ content: `⏰ **5 Minuten vorbei!** Das Ticket wird mit den bisherigen Bewertungen geschlossen.` });
+            await forceCloseVouch(interaction, currentTrade);
+        }, 5 * 60 * 1000); // 5 Minuten
+
+        vouchTimeouts.set(interaction.channelId, timeout);
         return;
     }
 
@@ -175,13 +274,15 @@ module.exports = async function handleButton(interaction) {
             return;
         }
 
+        // Timeout löschen falls vorhanden
+        const timeout = vouchTimeouts.get(interaction.channelId);
+        if (timeout) { clearTimeout(timeout); vouchTimeouts.delete(interaction.channelId); }
+
         trade.cancelled = true;
         store.save();
 
         await updateTradeMessage(interaction.channel, trade);
-
         await interaction.channel.send({ content: `⏳ Dieses Ticket wird in **5 Sekunden** gelöscht...` });
-
         await interaction.reply({ content: `❌ Trade abgebrochen. Ticket wird gelöscht.`, flags: MessageFlags.Ephemeral });
 
         setTimeout(async () => {
@@ -197,15 +298,14 @@ module.exports = async function handleButton(interaction) {
         return;
     }
 
-    // === SPAWNER ANKAUF BUTTON (DYNAMIC) ===
+    // === SPAWNER ANKAUF BUTTON ===
     if (interaction.customId === 'spawner_ankaufen') {
         const ankaufOptions = Object.entries(constants.prices).map(([name, prices]) => {
             const isStopped = prices.ankauf === 'Stop' || prices.ankauf === undefined;
             return {
                 label: `${constants.spawnerEmojis[name] || '📦'} ${name} Spawner`,
                 description: isStopped ? '⚠️ Ankauf derzeit GESPERRT' : `Preis: ${prices.ankauf.toFixed(1)}M`,
-                value: name,
-                emoji: constants.spawnerEmojis[name] || '📦'
+                value: name, emoji: constants.spawnerEmojis[name] || '📦'
             };
         });
 
@@ -222,22 +322,18 @@ module.exports = async function handleButton(interaction) {
             )
             .addActionRowComponents(row);
 
-        await interaction.reply({
-            components: [container],
-            flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
-        });
+        await interaction.reply({ components: [container], flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2 });
         return;
     }
 
-    // === SPAWNER VERKAUF BUTTON (DYNAMIC) ===
+    // === SPAWNER VERKAUF BUTTON ===
     if (interaction.customId === 'spawner_verkaufen') {
         const verkaufOptions = Object.entries(constants.prices).map(([name, prices]) => {
             const isStopped = prices.verkauf === 'Stop' || prices.verkauf === undefined;
             return {
                 label: `${constants.spawnerEmojis[name] || '📦'} ${name} Spawner`,
                 description: isStopped ? '⚠️ Verkauf derzeit GESPERRT' : `Du bekommst: ${prices.verkauf.toFixed(1)}M`,
-                value: name,
-                emoji: constants.spawnerEmojis[name] || '📦'
+                value: name, emoji: constants.spawnerEmojis[name] || '📦'
             };
         });
 
@@ -254,10 +350,11 @@ module.exports = async function handleButton(interaction) {
             )
             .addActionRowComponents(row);
 
-        await interaction.reply({
-            components: [container],
-            flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
-        });
+        await interaction.reply({ components: [container], flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2 });
         return;
     }
 };
+
+// Export für vouchHandler
+module.exports.forceCloseVouch = forceCloseVouch;
+module.exports.vouchTimeouts = vouchTimeouts;

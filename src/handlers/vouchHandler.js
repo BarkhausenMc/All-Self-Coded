@@ -13,30 +13,15 @@ const store = require('../data/store');
 const constants = require('../config/constants');
 const updateTradeMessage = require('../utils/updateTradeMessage');
 const buildTradeContainer = require('../utils/buildTradeContainer');
+const buttonHandler = require('./buttonHandler');
 
-// === HELPER: Trade finden mit mehreren IDs ===
+// === HELPER: Trade finden ===
 function findTrade(channelId) {
-    const variants = [
-        channelId,
-        String(channelId),
-        String(parseInt(channelId)),
-        parseInt(channelId),
-        channelId.toString()
-    ];
-    
+    const variants = [channelId, String(channelId), String(parseInt(channelId)), parseInt(channelId), channelId.toString()];
     const uniqueVariants = [...new Set(variants)];
-    
     for (const variant of uniqueVariants) {
-        if (store.trades[variant]) {
-            console.log(`[VAUCH] Trade gefunden unter Key: "${variant}"`);
-            return store.trades[variant];
-        }
+        if (store.trades[variant]) return store.trades[variant];
     }
-    
-    console.warn(`[VAUCH] Trade NICHT gefunden für Kanal-ID: "${channelId}"`);
-    console.warn(`Versuchte Keys:`, uniqueVariants);
-    console.warn(`Verfügbare Trade-Keys im Store:`, Object.keys(store.trades));
-    
     return null;
 }
 
@@ -61,10 +46,7 @@ async function logTrade(interaction, trade, status) {
             )
         );
 
-    await logChannel.send({
-        components: [logContainer],
-        flags: MessageFlags.IsComponentsV2
-    });
+    await logChannel.send({ components: [logContainer], flags: MessageFlags.IsComponentsV2 });
 }
 
 // === TEIL 1: STERN-AUSWAHL → MODAL ===
@@ -74,10 +56,7 @@ async function handleVouchSelect(interaction) {
     const trade = findTrade(interaction.channelId);
 
     if (!trade || !trade.awaitingVouch) {
-        await interaction.reply({
-            content: '❌ Dieser Trade ist nicht in der Bewertungsphase.',
-            flags: MessageFlags.Ephemeral
-        });
+        await interaction.reply({ content: '❌ Dieser Trade ist nicht in der Bewertungsphase.', flags: MessageFlags.Ephemeral });
         return;
     }
 
@@ -85,18 +64,12 @@ async function handleVouchSelect(interaction) {
     const isTrader = interaction.user.id === trade.claimedBy;
 
     if (!isCustomer && !isTrader) {
-        await interaction.reply({
-            content: '❌ Du bist nicht Teil dieses Trades.',
-            flags: MessageFlags.Ephemeral
-        });
+        await interaction.reply({ content: '❌ Du bist nicht Teil dieses Trades.', flags: MessageFlags.Ephemeral });
         return;
     }
 
     if (trade.vouches && trade.vouches.includes(interaction.user.id)) {
-        await interaction.reply({
-            content: '✅ Du hast bereits bewertet!',
-            flags: MessageFlags.Ephemeral
-        });
+        await interaction.reply({ content: '✅ Du hast bereits bewertet!', flags: MessageFlags.Ephemeral });
         return;
     }
 
@@ -114,7 +87,6 @@ async function handleVouchSelect(interaction) {
         .setRequired(false);
 
     modal.addComponents(new ActionRowBuilder().addComponents(textInput));
-
     await interaction.showModal(modal);
 }
 
@@ -127,31 +99,19 @@ async function handleVouchModal(interaction) {
     const trade = findTrade(interaction.channelId);
 
     if (!trade || !trade.awaitingVouch) {
-        await interaction.reply({
-            content: '❌ Dieser Trade ist nicht mehr in der Bewertungsphase.',
-            flags: MessageFlags.Ephemeral
-        });
+        await interaction.reply({ content: '❌ Dieser Trade ist nicht mehr in der Bewertungsphase.', flags: MessageFlags.Ephemeral });
         return;
     }
 
     if (trade.vouches && trade.vouches.includes(interaction.user.id)) {
-        await interaction.reply({
-            content: '✅ Du hast bereits bewertet!',
-            flags: MessageFlags.Ephemeral
-        });
+        await interaction.reply({ content: '✅ Du hast bereits bewertet!', flags: MessageFlags.Ephemeral });
         return;
     }
 
     const reviewerId = interaction.user.id;
     const reviewedId = (reviewerId === trade.kundeId) ? trade.claimedBy : trade.kundeId;
 
-    const vouchEntry = {
-        reviewerId,
-        reviewedId,
-        rating: stars,
-        text,
-        timestamp: new Date().toISOString()
-    };
+    const vouchEntry = { reviewerId, reviewedId, rating: stars, text, timestamp: new Date().toISOString() };
 
     if (!trade.vouchEntries) trade.vouchEntries = [];
     trade.vouchEntries.push(vouchEntry);
@@ -160,7 +120,20 @@ async function handleVouchModal(interaction) {
     trade.vouches.push(reviewerId);
     store.save();
 
+    // === LIVE-UPDATE: Trade-Nachricht updaten (zeigt wer bewertet hat) ===
+    try {
+        await updateTradeMessage(interaction.channel, trade);
+    } catch (err) {
+        // Ignorieren falls Nachricht nicht gefunden
+    }
+
     if (trade.vouches.length >= 2) {
+        // === BEIDE HABEN BEWERTET ===
+        
+        // Timeout löschen!
+        const timeout = buttonHandler.vouchTimeouts.get(interaction.channelId);
+        if (timeout) { clearTimeout(timeout); buttonHandler.vouchTimeouts.delete(interaction.channelId); }
+
         const vouch1 = trade.vouchEntries[0];
         const vouch2 = trade.vouchEntries[1];
 
@@ -170,127 +143,97 @@ async function handleVouchModal(interaction) {
         const customerStars = '⭐'.repeat(customerVouch.rating);
         const traderStars = '⭐'.repeat(traderVouch.rating);
 
-        const vouchContainer = new ContainerBuilder()
-            .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(
-                    `## ✅ Handel abgeschlossen • #${trade.handNummer}\n\n` 
-                )
-            )
-            .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
-            .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(
-                    `**👤 Kunde:** <@${trade.kundeId}>\n` +
-                    `**🤝 Trader:** <@${trade.claimedBy}>`
-                )
-            )
-            .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
-            .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(
-                    `**${trade.emoji} Geschäft:** ${trade.action} ||(aus sicht des Kunden)||\n` +
-                    `**${trade.spawnerEmoji} Spawner:** ${trade.spawnerType} x ${trade.amount}\n` +
-                    `**💰 Gesamtpreis:** ${trade.totalPrice.toFixed(1)}M\n\n` 
-                )
-            )
-            .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
-            .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(
-                    `### 📝 Bewertung von Kunde → Trader\n` +
-                    `${customerStars} (${customerVouch.rating}/5)\n` +
-                    `> ${customerVouch.text}`
-                )
-            )
-            .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
-            .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(
-                    `### 📝 Bewertung von Trader → Kunde\n` +
-                    `${traderStars} (${traderVouch.rating}/5)\n` +
-                    `> ${traderVouch.text}`
-                )
-            );
-
+        // Vouch-Channel Post
         const vouchChannel = interaction.guild.channels.cache.get(constants.VOUCH_CHANNEL_ID);
         if (vouchChannel) {
-            await vouchChannel.send({
-                components: [vouchContainer],
-                flags: MessageFlags.IsComponentsV2
-            });
+            const vouchContainer = new ContainerBuilder()
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(
+                        `## ✅ Handel abgeschlossen • #${trade.handNummer}\n\n` +
+                        `**👤 Kunde:** <@${trade.kundeId}>\n` +
+                        `**🤝 Trader:** <@${trade.claimedBy}>`
+                    )
+                )
+                .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(
+                        `**${trade.emoji} Geschäft:** ${trade.action} ||(aus sicht des Kunden)||\n` +
+                        `**${trade.spawnerEmoji} Spawner:** ${trade.spawnerType}\n` +
+                        `**📦 Menge:** ${trade.amount}\n` +
+                        `**💰 Gesamtpreis:** ${trade.totalPrice.toFixed(1)}M\n\n`
+                    )
+                )
+                .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(
+                        `### 📝 Bewertung von Kunde → Trader\n` +
+                        `${customerStars} (${customerVouch.rating}/5)\n` +
+                        `> ${customerVouch.text}`
+                    )
+                )
+                .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(
+                        `### 📝 Bewertung von Trader → Kunde\n` +
+                        `${traderStars} (${traderVouch.rating}/5)\n` +
+                        `> ${traderVouch.text}`
+                    )
+                );
+
+            await vouchChannel.send({ components: [vouchContainer], flags: MessageFlags.IsComponentsV2 });
+        }
+
+        // === TRADER STATS UPDATEN ===
+        if (trade.claimedBy && store.traderStats) {
+            if (!store.traderStats[trade.claimedBy]) {
+                store.traderStats[trade.claimedBy] = {
+                    completedTrades: 0, totalVolume: 0, totalEarned: 0, totalSpent: 0, totalStars: 0, starCount: 0
+                };
+            }
+            const stats = store.traderStats[trade.claimedBy];
+            stats.completedTrades += 1;
+            stats.totalVolume += trade.totalPrice;
+            if (trade.action === 'Ankauf') stats.totalEarned += trade.totalPrice;
+            else stats.totalSpent += trade.totalPrice;
+
+            const customerVouchForStats = trade.vouchEntries.find(v => v.reviewerId === trade.kundeId);
+            if (customerVouchForStats) {
+                stats.totalStars += customerVouchForStats.rating;
+                stats.starCount += 1;
+            }
+            store.save();
         }
 
         trade.awaitingVouch = false;
         trade.closed = true;
-        // === TRADER STATS HOCHZÄHLEN ===
-if (trade.claimedBy) {
-    if (!store.traderStats[trade.claimedBy]) {
-        store.traderStats[trade.claimedBy] = {
-            completedTrades: 0,
-            totalVolume: 0,      // Gesamtvolumen aller Trades
-            totalEarned: 0,      // Verdient (durch Ankauf = Kunde kauft)
-            totalSpent: 0,       // Ausgegeben (durch Verkauf = Kunde verkauft)
-            totalStars: 0,       // Sterne vom Kunden erhalten
-            starCount: 0         // Anzahl der Sterne-Bewertungen
-        };
-    }
-    
-    const stats = store.traderStats[trade.claimedBy];
-    stats.completedTrades += 1;
-    stats.totalVolume += trade.totalPrice;
-    
-    if (trade.action === 'Ankauf') {
-        // Kunde kauft → Trader/Plattform verdient das Geld
-        stats.totalEarned += trade.totalPrice;
-    } else {
-        // Kunde verkauft → Trader/Plattform zahlt Geld raus
-        stats.totalSpent += trade.totalPrice;
-    }
-    
-    // Sterne vom Kunden für den Tracker speichern
-    const customerVouch2 = trade.vouchEntries.find(v => v.reviewerId === trade.kundeId);
-    if (customerVouch2) {
-        stats.totalStars += customerVouch2.rating;
-        stats.starCount += 1;
-    }
-}
         store.save();
 
+        // Trade-Nachricht final updaten
         try {
-            const container = buildTradeContainer(trade);
-            const msg = await interaction.channel.messages.fetch(trade.messageId);
-            await msg.edit({ components: [container], flags: MessageFlags.IsComponentsV2 });
-        } catch (err) {
-            // Ignore
-        }
+            await updateTradeMessage(interaction.channel, trade);
+        } catch (err) {}
 
-        await interaction.channel.send({
-            content: `⏳ Dieses Ticket wird in **5 Sekunden** gelöscht...`
-        });
+        // Loggen
+        await logTrade(interaction, trade, '✅ ABGESCHLOSSEN (2/2 Bewertungen)');
 
-        await interaction.reply({
-            content: `✅ Beide haben bewertet! Trade abgeschlossen und im Vouch-Channel gepostet.`,
-            flags: MessageFlags.Ephemeral
-        });
+        // Countdown + Löschen
+        await interaction.channel.send({ content: `⏳ Dieses Ticket wird in **5 Sekunden** gelöscht...` });
+
+        await interaction.reply({ content: `✅ Beide haben bewertet! Trade abgeschlossen und im Vouch-Channel gepostet.`, flags: MessageFlags.Ephemeral });
 
         setTimeout(async () => {
             try {
-                await logTrade(interaction, trade, '✅ ABGESCHLOSSEN');
                 await interaction.channel.delete();
                 delete store.trades[interaction.channelId];
-                delete store.trades[String(interaction.channelId)];
-                delete store.trades[String(parseInt(interaction.channelId))];
                 store.save();
             } catch (err) {
-                console.log('Fehler beim Löschen/Loggen:', err.message);
+                console.log('Fehler beim Löschen:', err.message);
             }
         }, 5000);
 
-        delete store.trades[interaction.channelId];
-        delete store.trades[String(interaction.channelId)];
-        delete store.trades[String(parseInt(interaction.channelId))];
-        store.save();
     } else {
-        await interaction.reply({
-            content: `✅ Danke für deine Bewertung! (${trade.vouches.length}/2)\nWarte noch auf den anderen Trade-Partner.`,
-            flags: MessageFlags.Ephemeral
-        });
+        // === ERSTE BEWERTUNG — Warte auf zweite ===
+        await interaction.reply({ content: `✅ Danke für deine Bewertung! (1/2)\nWarte noch auf den anderen Trade-Partner.\n\n⏱️ Das Ticket schließt automatisch in 5 Minuten.`, flags: MessageFlags.Ephemeral });
     }
 }
 
