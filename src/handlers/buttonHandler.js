@@ -267,7 +267,7 @@ module.exports = async function handleButton(interaction) {
         return;
     }
 
-    // === ABBRUCH BUTTON ===
+        // === ABBRUCH BUTTON ===
     if (interaction.customId === 'abbruch') {
         const trade = findTrade(interaction.channelId);
 
@@ -284,8 +284,29 @@ module.exports = async function handleButton(interaction) {
         store.save();
 
         await updateTradeMessage(interaction.channel, trade);
-        await interaction.channel.send({ content: `⏳ Dieses Ticket wird in **5 Sekunden** gelöscht...` });
-        await interaction.reply({ content: `❌ Trade abgebrochen. Ticket wird gelöscht.`, flags: MessageFlags.Ephemeral });
+
+        // ⏳ Countdown als Container
+        const countdownContainer = new ContainerBuilder()
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(
+                    `## ⏳ Ticket wird gelöscht\n\n` +
+                    `Dieses Ticket wird in **5 Sekunden** gelöscht...`
+                )
+            );
+
+        await interaction.channel.send({ components: [countdownContainer], flags: MessageFlags.IsComponentsV2 });
+
+        // ❌ Abbrechen-Bestätigung als Container (nicht Ephemeral)
+        const abbruchContainer = new ContainerBuilder()
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(
+                    `## ❌ Trade abgebrochen\n\n` +
+                    `Der Handel #${trade.handNummer} wurde von <@${interaction.user.id}> abgebrochen.\n` +
+                    `Das Ticket wird gelöscht.`
+                )
+            );
+
+        await interaction.reply({ components: [abbruchContainer], flags: MessageFlags.IsComponentsV2 });
 
         const guild = interaction.guild;
         const channelId = String(interaction.channelId);
