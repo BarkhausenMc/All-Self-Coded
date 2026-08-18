@@ -8,8 +8,7 @@ let data = {
     tradeCounters: {},
     trades: {},
     vouches: [],
-    traderStats: {},
-    prices: {}
+    traderStats: {}
 };
 
 function loadData() {
@@ -22,14 +21,12 @@ function loadData() {
         if (!data.trades) data.trades = {};
         if (!data.vouches) data.vouches = [];
         if (!data.traderStats) data.traderStats = {};
-        if (!data.prices) data.prices = {};
         
         console.log('✅ Datenbank geladen:', Object.keys(data.trades).length, 'aktive Trades');
         console.log('📊 Trader-Stats:', Object.keys(data.traderStats).length, 'Trader erfasst');
-        console.log('💰 Preise:', Object.keys(data.prices).length, 'dynamische Einträge');
     } catch (err) {
         console.error('❌ Fehler beim Laden:', err);
-        data = { tradeCounters: {}, trades: {}, vouches: [], traderStats: {}, prices: {} };
+        data = { tradeCounters: {}, trades: {}, vouches: [], traderStats: {} };
     }
 }
 
@@ -44,32 +41,19 @@ function saveData() {
     }
 }
 
+// ⭐ HILFSFUNKTIONEN FÜR PREISE (NEU)
 function getPrice(spawnerName, type) {
-    if (data.prices[spawnerName] && data.prices[spawnerName][type] !== undefined) {
-        return data.prices[spawnerName][type];
-    }
-    return constants.defaultPrices[spawnerName]?.[type] || 0;
+    return constants.prices[spawnerName]?.[type] || 0;
 }
 
 function setPrice(spawnerName, type, value) {
-    if (!data.prices[spawnerName]) {
-        data.prices[spawnerName] = {};
-    }
-    data.prices[spawnerName][type] = value;
-    saveData();
+    // In Zukunft hier speichern, jetzt nur Log
+    console.log(`Preis gesetzt: ${spawnerName} ${type} = ${value}`);
 }
 
 function togglePrice(spawnerName, type) {
-    if (!data.prices[spawnerName]) {
-        data.prices[spawnerName] = {};
-    }
-    const current = data.prices[spawnerName][type];
-    if (current === 'Stop') {
-        data.prices[spawnerName][type] = constants.defaultPrices[spawnerName]?.[type] || 0;
-    } else {
-        data.prices[spawnerName][type] = 'Stop';
-    }
-    saveData();
+    // In Zukunft hier speichern, jetzt nur Log
+    console.log(`Preis toggled: ${spawnerName} ${type}`);
 }
 
 loadData();
@@ -79,7 +63,6 @@ module.exports = {
     get trades() { return data.trades; },
     get vouches() { return data.vouches; },
     get traderStats() { return data.traderStats; },
-    get prices() { return data.prices; },
     save: saveData,
     reload: loadData,
     getPrice,

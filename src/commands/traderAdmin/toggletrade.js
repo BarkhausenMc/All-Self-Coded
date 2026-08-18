@@ -26,7 +26,6 @@ module.exports = {
         ),
 
     async execute(interaction) {
-        // ⭐ TRADER ADMIN CHECK
         if (!interaction.member.roles.cache.has(constants.TRADER_ADMIN_ROLE_ID)) {
             await interaction.reply({
                 content: '❌ Nur Trader Admins dürfen Trades stoppen!',
@@ -39,15 +38,12 @@ module.exports = {
         const typ = interaction.options.getString('typ');
 
         store.togglePrice(spawner, typ);
-        const current = store.getPrice(spawner, typ);
-        const isStopped = current === 'Stop';
 
         const emoji = constants.spawnerEmojis[spawner] || '📦';
         const typLabel = typ === 'ankauf' ? '🛒 ANKAUF' : '💰 VERKAUF';
-        const status = isStopped ? '🔴 GESTOPT' : '🟢 FREIGEGEBEN';
 
         await interaction.reply({
-            content: `${emoji} ${spawner} — ${typLabel}: **${status}**`,
+            content: `${emoji} ${spawner} — ${typLabel}: **$\{typ === 'ankauf' ? 'Ankauf' : 'Verkauf'}**`,
             flags: 64
         });
     }
