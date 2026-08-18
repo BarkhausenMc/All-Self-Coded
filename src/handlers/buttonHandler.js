@@ -123,70 +123,142 @@ module.exports = async function handleButton(interaction) {
         return;
     }
 
-    // === CLOSE BUTTON → Vouch-Phase ===
-    if (interaction.customId === 'close') {
-        const trade = findTrade(interaction.channelId);
+// === COMPLETE BUTTON ("Als angekauft markieren") ===
+if (interaction.customId === 'complete') {
+    const trade = findTrade(interaction.channelId);
 
-        if (!trade || !trade.claimedBy) {
-            await interaction.reply({
-                content: '❌ Der Trade muss erst geclaimt werden.',
-                flags: MessageFlags.Ephemeral
-            });
-            return;
-        }
-
-        if (interaction.user.id !== trade.claimedBy) {
-            await interaction.reply({
-                content: `❌ Nur <@${trade.claimedBy}> darf diesen Trade abschließen.`,
-                flags: MessageFlags.Ephemeral
-            });
-            return;
-        }
-
-        trade.awaitingVouch = true;
-        trade.vouches = [];
-        trade.vouchEntries = [];
-        store.save();
-
-        await updateTradeMessage(interaction.channel, trade);
-
-        const starSelect = new StringSelectMenuBuilder()
-            .setCustomId('vouch_stars')
-            .setPlaceholder('⭐ Bewerte deinen Trade-Partner (1-5 Sterne)')
-            .addOptions([
-                { label: '⭐ 1 Stern', description: 'Sehr schlechte Erfahrung', value: '1', emoji: '⭐' },
-                { label: '⭐⭐ 2 Sterne', description: 'Schlechte Erfahrung', value: '2', emoji: '⭐' },
-                { label: '⭐⭐⭐ 3 Sterne', description: 'Okay', value: '3', emoji: '⭐' },
-                { label: '⭐⭐⭐⭐ 4 Sterne', description: 'Gute Erfahrung', value: '4', emoji: '⭐' },
-                { label: '⭐⭐⭐⭐⭐ 5 Sterne', description: 'Sehr gute Erfahrung', value: '5', emoji: '⭐' }
-            ]);
-
-        const vouchRow = new ActionRowBuilder().addComponents(starSelect);
-
-        const vouchContainer = new ContainerBuilder()
-            .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(
-                    `## 📝 • Trade Bewertung\n\n` +
-                    `Bitte **bewertet** euch gegenseitig!\n` +
-                    `Wähle unten deine **Sterne-Bewertung** aus.\n` +
-                    `Du hast noch eine **Anmerkung**?\nKein Problem du kannst sie Gleich mit in die Bewertung schreiben.\n\n` +
-                    `**Kunde:** <@${trade.kundeId}>\n` +
-                    `**Trader:** <@${trade.claimedBy}>`
-                )
-            )
-            .addActionRowComponents(vouchRow);
-
-        await interaction.channel.send({
-            components: [vouchContainer],
-            flags: MessageFlags.IsComponentsV2
-        });
-
+    if (!trade || !trade.claimedBy) {
         await interaction.reply({
-            content: `✅ Trade wird abgeschlossen — bitte bewertet euch gegenseitig!`,
+            content: '❌ Der Trade muss zuerst freigegeben/geclaimt werden.',
             flags: MessageFlags.Ephemeral
         });
         return;
     }
+
+    if (interaction.user.id !== trade.claimedBy) {
+        await interaction.reply({
+            content: `❌ Nur <@${trade.claimedBy}> darf diesen Trade abschließen.`,
+            flags: MessageFlags.Ephemeral
+        });
+        return;
+    }
+
+    trade.closed = true;
+    store.save();
+
+    // ✅ Container mit "Abgeschlossen" + Bewertungs-Section erscheint
+    const completedContainer = new ContainerBuilder()
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+                `## ✅ Handel abgeschlossen\n\n` +
+                `Abgeschlossen von <@${trade.claimedBy}>.\n` +
+                `Dieser Thread wird in Kürze automatisch archiviert.`
+            )
+        )
+        .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+                `### ⭐ Bewertung · Handel #${trade.handNummer}\n\n` +
+                `Der Handel ist abgeschlossen! Bitte bewertet euch gegenseitig.\n\n` +
+                `@Adrian ⏳ Ausstehend\n` +
+                `@Voidlesh ⏳ Ausstehend`
+            )
+        );
+
+    // Original-Nachricht aktualisieren (Container + Buttons)
+    const actionRow = buildActionButtonRow(trade);
+    await updateTradeMessage(interaction.channel, trade, [completedContainer], actionRow);
+
+    // Rating-Section als zweite Nachricht (wie im Screenshot)
+    await interaction.channel.send({
+        content: `⏳ Dieses Ticket wird in **5 Sekunden** gelöscht...`
+    });
+
+    await interaction.reply({
+        content: `✅ Trade abgeschlossen! Bitte bewertet euch gegenseitig.`,
+        flags: MessageFlags.Ephemeral
+    });
+
+    setTimeout(async () => {
+        try {
+            await logTrade(interaction, trade, '✅ ABGESCHLOSSEN');
+            await interaction.channel.delete();
+            delete store.trades[interaction.channelId];
+            store.save();
+        } catch (err) {
+            console.log('Fehler beim Löschen/Loggen:', err.message);
+        }
+    }, 5000);
+
+    return;
+}
+
+// === CLOSE BUTTON (Freigeben → Vouch-Phase) ===
+if (interaction.customId === 'close') {
+    const trade = findTrade(interaction.channelId);
+
+    if (!trade || !trade.claimedBy) {
+        await interaction.reply({
+            content: '❌ Der Trade muss zuerst freigegeben/geclaimt werden.',
+            flags: MessageFlags.Ephemeral
+        });
+        return;
+    }
+
+    if (interaction.user.id !== trade.claimedBy) {
+        await interaction.reply({
+            content: `❌ Nur <@${trade.claimedBy}> darf diesen Trade freigeben.`,
+            flags: MessageFlags.Ephemeral
+        });
+        return;
+    }
+
+    trade.awaitingVouch = true;
+    trade.vouches = [];
+    trade.vouchEntries = [];
+    store.save();
+
+    // Update: Claim-Nachricht + Buttons bleiben
+    await updateTradeMessage(interaction.channel, trade);
+
+    // Rating-Button erscheint als separate Nachricht (wie im Screenshot)
+    const starSelect = new StringSelectMenuBuilder()
+        .setCustomId('vouch_stars')
+        .setPlaceholder('⭐ Bewerte deinen Trade-Partner (1-5 Sterne)')
+        .addOptions([
+            { label: '⭐ 1 Stern', description: 'Sehr schlechte Erfahrung', value: '1', emoji: '⭐' },
+            { label: '⭐⭐ 2 Sterne', description: 'Schlechte Erfahrung', value: '2', emoji: '⭐' },
+            { label: '⭐⭐⭐ 3 Sterne', description: 'Okay', value: '3', emoji: '⭐' },
+            { label: '⭐⭐⭐⭐ 4 Sterne', description: 'Gute Erfahrung', value: '4', emoji: '⭐' },
+            { label: '⭐⭐⭐⭐⭐ 5 Sterne', description: 'Sehr gute Erfahrung', value: '5', emoji: '⭐' }
+        ]);
+
+    const vouchRow = new ActionRowBuilder().addComponents(starSelect);
+
+    const vouchContainer = new ContainerBuilder()
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+                `## 📝 • Trade Bewertung\n\n` +
+                `Bitte bewertet euch gegenseitig!\n` +
+                `Wähle unten deine Sterne-Bewertung aus.\n` +
+                `Danach kannst du noch einen Text schreiben.\n\n` +
+                `**Kunde:** <@${trade.kundeId}>\n` +
+                `**Trader:** <@${trade.claimedBy}>`
+            )
+        )
+        .addActionRowComponents(vouchRow);
+
+    await interaction.channel.send({
+        components: [vouchContainer],
+        flags: MessageFlags.IsComponentsV2
+    });
+
+    await interaction.reply({
+        content: `✅ Trade freigegeben — bitte bewertet euch gegenseitig!`,
+        flags: MessageFlags.Ephemeral
+    });
+    return;
+}
 
     // === ABBRUCH BUTTON ===
     if (interaction.customId === 'abbruch') {

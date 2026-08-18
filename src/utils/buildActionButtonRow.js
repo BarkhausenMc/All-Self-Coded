@@ -5,29 +5,36 @@ module.exports = function buildActionButtonRow(data) {
     if (data.awaitingVouch) return null;
 
     if (data.claimedBy) {
+        // ✅ CLAIMED: "Als angekauft markieren" + "Freigeben" + "Abbrechen"
         return new ActionRowBuilder().addComponents(
             new ButtonBuilder()
-                .setCustomId('close')
-                .setLabel('Schließen')
+                .setCustomId('complete')
+                .setLabel('Als angekauft markieren ✓')
                 .setStyle(ButtonStyle.Success)
                 .setEmoji('✅'),
             new ButtonBuilder()
+                .setCustomId('close')
+                .setLabel('Freigeben 🔓')
+                .setStyle(ButtonStyle.Primary)
+                .setEmoji('🔓'),
+            new ButtonBuilder()
                 .setCustomId('abbruch')
                 .setLabel('Abbrechen')
-                .setStyle(ButtonStyle.Secondary)
+                .setStyle(ButtonStyle.Danger)
                 .setEmoji('🗑️')
         );
     } else {
+        // 🔓 NOT CLAIMED: "Claim" + "Freigeben" + "Abbrechen"
         return new ActionRowBuilder().addComponents(
             new ButtonBuilder()
                 .setCustomId('claim')
-                .setLabel('Claim')
+                .setLabel('Freigeben 🔓')
                 .setStyle(ButtonStyle.Primary)
-                .setEmoji('🙋‍♂️'),
+                .setEmoji('🔓'),
             new ButtonBuilder()
                 .setCustomId('abbruch')
                 .setLabel('Abbrechen')
-                .setStyle(ButtonStyle.Secondary)
+                .setStyle(ButtonStyle.Danger)
                 .setEmoji('🗑️')
         );
     }
