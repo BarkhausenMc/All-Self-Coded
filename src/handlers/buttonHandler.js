@@ -267,7 +267,7 @@ module.exports = async function handleButton(interaction) {
         return;
     }
 
-        // === ABBRUCH BUTTON ===
+                // === ABBRUCH BUTTON ===
     if (interaction.customId === 'abbruch') {
         const trade = findTrade(interaction.channelId);
 
@@ -285,7 +285,22 @@ module.exports = async function handleButton(interaction) {
 
         await updateTradeMessage(interaction.channel, trade);
 
-        // ⏳ Countdown als Container
+        // ⭐ DEFER UPDATE statt reply (verhindert "already acknowledged")
+        await interaction.deferUpdate();
+
+        // 1. Abbruch-Container als eigenständige Nachricht
+        const abbruchContainer = new ContainerBuilder()
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(
+                    `## ❌ Trade abgebrochen\n\n` +
+                    `Der Handel #${trade.handNummer} wurde von <@${interaction.user.id}> abgebrochen.\n` +
+                    `Das Ticket wird gelöscht.`
+                )
+            );
+
+        await interaction.channel.send({ components: [abbruchContainer], flags: MessageFlags.IsComponentsV2 });
+
+        // 2. Countdown-Container
         const countdownContainer = new ContainerBuilder()
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
@@ -296,17 +311,18 @@ module.exports = async function handleButton(interaction) {
 
         await interaction.channel.send({ components: [countdownContainer], flags: MessageFlags.IsComponentsV2 });
 
-        // ❌ Abbrechen-Bestätigung als Container (nicht Ephemeral)
-        const abbruchContainer = new ContainerBuilder()
+        // 3. Ephemeral Bestätigung (separate Nachricht)
+        const confirmationContainer = new ContainerBuilder()
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
-                    `## ❌ Trade abgebrochen\n\n` +
-                    `Der Handel #${trade.handNummer} wurde von <@${interaction.user.id}> abgebrochen.\n` +
-                    `Das Ticket wird gelöscht.`
+                    `✅ Deine Anfrage wurde verarbeitet. Das Ticket wird jetzt geschlossen.`
                 )
             );
 
-        await interaction.reply({ components: [abbruchContainer], flags: MessageFlags.IsComponentsV2 });
+        await interaction.followUp({
+            components: [confirmationContainer],
+            flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral
+        });
 
         const guild = interaction.guild;
         const channelId = String(interaction.channelId);
@@ -323,7 +339,7 @@ module.exports = async function handleButton(interaction) {
         }, 5000);
         return;
     }
-
+    
     // === SPAWNER ANKAUF BUTTON ===
     if (interaction.customId === 'spawner_ankaufen') {
         const ankaufOptions = Object.entries(constants.prices).map(([name, prices]) => {
