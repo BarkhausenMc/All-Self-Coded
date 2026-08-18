@@ -11,32 +11,19 @@ const store = require('../data/store');
 const constants = require('../config/constants');
 const updateTradeMessage = require('../utils/updateTradeMessage');
 
-// === HELPER: Trade finden mit mehreren IDs ===
+// === HELPER: Trade finden ===
 function findTrade(channelId) {
-    // Versuche mehrere Varianten der Channel ID
     const variants = [
-        channelId,
-        String(channelId),
-        String(parseInt(channelId)),
-        parseInt(channelId),
+        channelId, String(channelId),
+        String(parseInt(channelId)), parseInt(channelId),
         channelId.toString()
     ];
-    
-    // Entferne Duplikate
     const uniqueVariants = [...new Set(variants)];
-    
     for (const variant of uniqueVariants) {
-        if (store.trades[variant]) {
-            console.log(`✅ Trade gefunden unter Key: "${variant}"`);
-            return store.trades[variant];
-        }
+        if (store.trades[variant]) return store.trades[variant];
     }
-    
-    // DEBUG: Zeige alle verfügbaren Keys
-    console.warn(`⚠️ Trade NICHT gefunden für Kanal-ID: "${channelId}"`);
-    console.warn(`Versuchte Keys:`, uniqueVariants);
-    console.warn(`Verfügbare Trade-Keys im Store:`, Object.keys(store.trades));
-    
+    console.warn(`⚠️ Trade NICHT gefunden für Channel: "${channelId}"`);
+    console.warn(`Verfügbare Keys:`, Object.keys(store.trades));
     return null;
 }
 
@@ -67,22 +54,6 @@ async function logTrade(interaction, trade, status) {
     });
 }
 
-// === CLOSE THREAD AFTER DELAY ===
-async function closeThreadAfterDelay(interaction, trade, delaySeconds) {
-    setTimeout(async () => {
-        try {
-            await logTrade(interaction, trade, trade.cancelled ? '❌ ABGEBROCHEN' : '✅ ABGESCHLOSSEN');
-            await interaction.channel.delete();
-            delete store.trades[interaction.channelId];
-            delete store.trades[String(interaction.channelId)];
-            delete store.trades[String(parseInt(interaction.channelId))];
-            store.save();
-        } catch (err) {
-            console.log('Fehler beim Löschen/Loggen:', err.message);
-        }
-    }, delaySeconds * 1000);
-}
-
 module.exports = async function handleButton(interaction) {
 
     // === CLAIM BUTTON ===
@@ -90,24 +61,17 @@ module.exports = async function handleButton(interaction) {
         const trade = findTrade(interaction.channelId);
 
         if (!trade) {
-            console.error('[CLAIM ERROR] Trade nicht gefunden für Channel:', interaction.channelId);
             await interaction.reply({ content: '❌ Trade nicht gefunden.', flags: MessageFlags.Ephemeral });
             return;
         }
 
         if (trade.claimedBy) {
-            await interaction.reply({
-                content: `❌ Bereits von <@${trade.claimedBy}> geclaimt.`,
-                flags: MessageFlags.Ephemeral
-            });
+            await interaction.reply({ content: `❌ Bereits von <@${trade.claimedBy}> geclaimt.`, flags: MessageFlags.Ephemeral });
             return;
         }
 
         if (!interaction.member.roles.cache.has(constants.TRADER_ROLE_ID)) {
-            await interaction.reply({
-                content: '❌ Nur Mitglieder mit der Trader-Rolle dürfen Trades claimen.',
-                flags: MessageFlags.Ephemeral
-            });
+            await interaction.reply({ content: '❌ Nur Trader dürfen Trades claimen.', flags: MessageFlags.Ephemeral });
             return;
         }
 
@@ -116,159 +80,98 @@ module.exports = async function handleButton(interaction) {
 
         await updateTradeMessage(interaction.channel, trade);
 
-        await interaction.reply({
-            content: `✅ Du hast den Trade geclaimt!`,
-            flags: MessageFlags.Ephemeral
-        });
+        await interaction.reply({ content: `✅ Du hast den Trade geclaimt!`, flags: MessageFlags.Ephemeral });
         return;
     }
 
-// === COMPLETE BUTTON ("Als angekauft markieren") ===
-if (interaction.customId === 'complete') {
-    const trade = findTrade(interaction.channelId);
+    // === FREIGEBEN BUTTON (Unclaim) ===
+    if (interaction.customId === 'freigeben') {
+        const trade = findTrade(interaction.channelId);
 
-    if (!trade || !trade.claimedBy) {
-        await interaction.reply({
-            content: '❌ Der Trade muss zuerst freigegeben/geclaimt werden.',
-            flags: MessageFlags.Ephemeral
-        });
-        return;
-    }
-
-    if (interaction.user.id !== trade.claimedBy) {
-        await interaction.reply({
-            content: `❌ Nur <@${trade.claimedBy}> darf diesen Trade abschließen.`,
-            flags: MessageFlags.Ephemeral
-        });
-        return;
-    }
-
-    trade.closed = true;
-    store.save();
-
-    // ✅ Container mit "Abgeschlossen" + Bewertungs-Section erscheint
-    const completedContainer = new ContainerBuilder()
-        .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(
-                `## ✅ Handel abgeschlossen\n\n` +
-                `Abgeschlossen von <@${trade.claimedBy}>.\n` +
-                `Dieser Thread wird in Kürze automatisch archiviert.`
-            )
-        )
-        .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
-        .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(
-                `### ⭐ Bewertung · Handel #${trade.handNummer}\n\n` +
-                `Der Handel ist abgeschlossen! Bitte bewertet euch gegenseitig.\n\n` +
-                `@Adrian ⏳ Ausstehend\n` +
-                `@Voidlesh ⏳ Ausstehend`
-            )
-        );
-
-    // Original-Nachricht aktualisieren (Container + Buttons)
-    const actionRow = buildActionButtonRow(trade);
-    await updateTradeMessage(interaction.channel, trade, [completedContainer], actionRow);
-
-    // Rating-Section als zweite Nachricht (wie im Screenshot)
-    await interaction.channel.send({
-        content: `⏳ Dieses Ticket wird in **5 Sekunden** gelöscht...`
-    });
-
-    await interaction.reply({
-        content: `✅ Trade abgeschlossen! Bitte bewertet euch gegenseitig.`,
-        flags: MessageFlags.Ephemeral
-    });
-
-    setTimeout(async () => {
-        try {
-            await logTrade(interaction, trade, '✅ ABGESCHLOSSEN');
-            await interaction.channel.delete();
-            delete store.trades[interaction.channelId];
-            store.save();
-        } catch (err) {
-            console.log('Fehler beim Löschen/Loggen:', err.message);
+        if (!trade || !trade.claimedBy) {
+            await interaction.reply({ content: '❌ Trade ist nicht geclaimt.', flags: MessageFlags.Ephemeral });
+            return;
         }
-    }, 5000);
 
-    return;
-}
+        if (interaction.user.id !== trade.claimedBy) {
+            await interaction.reply({ content: `❌ Nur <@${trade.claimedBy}> kann den Trade freigeben.`, flags: MessageFlags.Ephemeral });
+            return;
+        }
 
-// === CLOSE BUTTON (Freigeben → Vouch-Phase) ===
-if (interaction.customId === 'close') {
-    const trade = findTrade(interaction.channelId);
+        // Unclaim → zurück zu Claim + Abbrechen
+        trade.claimedBy = null;
+        store.save();
 
-    if (!trade || !trade.claimedBy) {
-        await interaction.reply({
-            content: '❌ Der Trade muss zuerst freigegeben/geclaimt werden.',
-            flags: MessageFlags.Ephemeral
-        });
+        await updateTradeMessage(interaction.channel, trade);
+
+        await interaction.reply({ content: `🔓 Trade freigegeben! Jeder Trader kann ihn jetzt neu claimen.`, flags: MessageFlags.Ephemeral });
         return;
     }
 
-    if (interaction.user.id !== trade.claimedBy) {
-        await interaction.reply({
-            content: `❌ Nur <@${trade.claimedBy}> darf diesen Trade freigeben.`,
-            flags: MessageFlags.Ephemeral
-        });
-        return;
-    }
+    // === ALS ANGEKAUFT MARKIEREN → Vouch-Phase ===
+    if (interaction.customId === 'complete') {
+        const trade = findTrade(interaction.channelId);
 
-    trade.awaitingVouch = true;
-    trade.vouches = [];
-    trade.vouchEntries = [];
-    store.save();
+        if (!trade || !trade.claimedBy) {
+            await interaction.reply({ content: '❌ Der Trade muss erst geclaimt werden.', flags: MessageFlags.Ephemeral });
+            return;
+        }
 
-    // Update: Claim-Nachricht + Buttons bleiben
-    await updateTradeMessage(interaction.channel, trade);
+        if (interaction.user.id !== trade.claimedBy) {
+            await interaction.reply({ content: `❌ Nur <@${trade.claimedBy}> darf den Trade abschließen.`, flags: MessageFlags.Ephemeral });
+            return;
+        }
 
-    // Rating-Button erscheint als separate Nachricht (wie im Screenshot)
-    const starSelect = new StringSelectMenuBuilder()
-        .setCustomId('vouch_stars')
-        .setPlaceholder('⭐ Bewerte deinen Trade-Partner (1-5 Sterne)')
-        .addOptions([
-            { label: '⭐ 1 Stern', description: 'Sehr schlechte Erfahrung', value: '1', emoji: '⭐' },
-            { label: '⭐⭐ 2 Sterne', description: 'Schlechte Erfahrung', value: '2', emoji: '⭐' },
-            { label: '⭐⭐⭐ 3 Sterne', description: 'Okay', value: '3', emoji: '⭐' },
-            { label: '⭐⭐⭐⭐ 4 Sterne', description: 'Gute Erfahrung', value: '4', emoji: '⭐' },
-            { label: '⭐⭐⭐⭐⭐ 5 Sterne', description: 'Sehr gute Erfahrung', value: '5', emoji: '⭐' }
-        ]);
+        trade.awaitingVouch = true;
+        trade.vouches = [];
+        trade.vouchEntries = [];
+        store.save();
 
-    const vouchRow = new ActionRowBuilder().addComponents(starSelect);
+        // Original-Nachricht aktualisieren (Buttons verschwinden)
+        await updateTradeMessage(interaction.channel, trade);
 
-    const vouchContainer = new ContainerBuilder()
-        .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(
-                `## 📝 • Trade Bewertung\n\n` +
-                `Bitte bewertet euch gegenseitig!\n` +
-                `Wähle unten deine Sterne-Bewertung aus.\n` +
-                `Danach kannst du noch einen Text schreiben.\n\n` +
-                `**Kunde:** <@${trade.kundeId}>\n` +
-                `**Trader:** <@${trade.claimedBy}>`
+        // Bewertungs-UI senden
+        const starSelect = new StringSelectMenuBuilder()
+            .setCustomId('vouch_stars')
+            .setPlaceholder('⭐ Bewerte deinen Trade-Partner (1-5 Sterne)')
+            .addOptions([
+                { label: '⭐ 1 Stern', description: 'Sehr schlechte Erfahrung', value: '1', emoji: '⭐' },
+                { label: '⭐⭐ 2 Sterne', description: 'Schlechte Erfahrung', value: '2', emoji: '⭐' },
+                { label: '⭐⭐⭐ 3 Sterne', description: 'Okay', value: '3', emoji: '⭐' },
+                { label: '⭐⭐⭐⭐ 4 Sterne', description: 'Gute Erfahrung', value: '4', emoji: '⭐' },
+                { label: '⭐⭐⭐⭐⭐ 5 Sterne', description: 'Sehr gute Erfahrung', value: '5', emoji: '⭐' }
+            ]);
+
+        const vouchRow = new ActionRowBuilder().addComponents(starSelect);
+
+        const vouchContainer = new ContainerBuilder()
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(
+                    `## 📝 • Trade Bewertung\n\n` +
+                    `Bitte bewertet euch gegenseitig!\n` +
+                    `Wähle unten deine Sterne-Bewertung aus.\n` +
+                    `Danach kannst du noch einen Text schreiben.\n\n` +
+                    `**Kunde:** <@${trade.kundeId}>\n` +
+                    `**Trader:** <@${trade.claimedBy}>`
+                )
             )
-        )
-        .addActionRowComponents(vouchRow);
+            .addActionRowComponents(vouchRow);
 
-    await interaction.channel.send({
-        components: [vouchContainer],
-        flags: MessageFlags.IsComponentsV2
-    });
+        await interaction.channel.send({
+            components: [vouchContainer],
+            flags: MessageFlags.IsComponentsV2
+        });
 
-    await interaction.reply({
-        content: `✅ Trade freigegeben — bitte bewertet euch gegenseitig!`,
-        flags: MessageFlags.Ephemeral
-    });
-    return;
-}
+        await interaction.reply({ content: `✅ Trade abgeschlossen — bitte bewertet euch gegenseitig!`, flags: MessageFlags.Ephemeral });
+        return;
+    }
 
     // === ABBRUCH BUTTON ===
     if (interaction.customId === 'abbruch') {
         const trade = findTrade(interaction.channelId);
 
         if (!trade) {
-            await interaction.reply({
-                content: '❌ Trade nicht gefunden.',
-                flags: MessageFlags.Ephemeral
-            });
+            await interaction.reply({ content: '❌ Trade nicht gefunden.', flags: MessageFlags.Ephemeral });
             return;
         }
 
@@ -277,105 +180,66 @@ if (interaction.customId === 'close') {
 
         await updateTradeMessage(interaction.channel, trade);
 
-        await interaction.channel.send({
-            content: `⏳ Dieses Ticket wird in **5 Sekunden** gelöscht...`
-        });
+        await interaction.channel.send({ content: `⏳ Dieses Ticket wird in **5 Sekunden** gelöscht...` });
 
-        await interaction.reply({
-            content: `❌ Trade wurde abgebrochen. Ticket wird gelöscht.`,
-            flags: MessageFlags.Ephemeral
-        });
+        await interaction.reply({ content: `❌ Trade abgebrochen. Ticket wird gelöscht.`, flags: MessageFlags.Ephemeral });
 
-        closeThreadAfterDelay(interaction, trade, 5);
+        setTimeout(async () => {
+            try {
+                await logTrade(interaction, trade, '❌ ABGEBROCHEN');
+                await interaction.channel.delete();
+                delete store.trades[interaction.channelId];
+                store.save();
+            } catch (err) {
+                console.log('Fehler beim Löschen:', err.message);
+            }
+        }, 5000);
         return;
     }
 
-// === SPAWNER ANKAUF BUTTON (ALLE SICHTBAR MIT STATUS) ===
-if (interaction.customId === 'spawner_ankaufen') {
-    const ankaufOptions = Object.entries(constants.prices).map(([name, prices]) => {
-        const isStopped = prices.ankauf === 'Stop' || prices.ankauf === undefined;
-        return {
-            label: `${name} Spawner`,
-            description: isStopped 
-                ? '⚠️ Ankauf derzeit GESTOPT' 
-                : `Preis: ${prices.ankauf.toFixed(1)}M`,
-            value: name,
-            emoji: constants.spawnerEmojis[name] || '📦'
-        };
-    });
+    // === SPAWNER ANKAUF BUTTON (DYNAMIC) ===
+    if (interaction.customId === 'spawner_ankaufen') {
+        const ankaufOptions = Object.entries(constants.prices).map(([name, prices]) => {
+            const isStopped = prices.ankauf === 'Stop' || prices.ankauf === undefined;
+            return {
+                label: `${constants.spawnerEmojis[name] || '📦'} ${name} Spawner`,
+                description: isStopped ? '⚠️ Ankauf derzeit GESPERRT' : `Preis: ${prices.ankauf.toFixed(1)}M`,
+                value: name,
+                emoji: constants.spawnerEmojis[name] || '📦'
+            };
+        });
 
-    const selectMenu = new StringSelectMenuBuilder()
-        .setCustomId('select_spawner:ankauf')
-        .setPlaceholder('Spawner auswählen...')
-        .addOptions(ankaufOptions);
+        const selectMenu = new StringSelectMenuBuilder()
+            .setCustomId('select_spawner:ankauf')
+            .setPlaceholder('Spawner auswählen...')
+            .addOptions(ankaufOptions);
 
-    const row = new ActionRowBuilder().addComponents(selectMenu);
+        const row = new ActionRowBuilder().addComponents(selectMenu);
 
-    const container = new ContainerBuilder()
-        .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent('## 🛒 • Spawner Ankauf\nWähle unten den Spawner, den du **kaufen** möchtest.')
-        )
-        .addActionRowComponents(row);
+        const container = new ContainerBuilder()
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent('## 🛒 • Spawner Ankauf\nWähle unten den Spawner, den du **kaufen** möchtest.')
+            )
+            .addActionRowComponents(row);
 
-    await interaction.reply({
-        components: [container],
-        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
-    });
-    return;
-}
-
-// === SPAWNER VERKAUF BUTTON (ALLE SICHTBAR MIT STATUS) ===
-if (interaction.customId === 'spawner_verkaufen') {
-    const verkaufOptions = Object.entries(constants.prices).map(([name, prices]) => {
-        const isStopped = prices.verkauf === 'Stop' || prices.verkauf === undefined;
-        return {
-            label: `${constants.spawnerEmojis[name] || '📦'} ${name} Spawner`,
-            description: isStopped 
-                ? '⚠️ Verkauf derzeit GESTOPT' 
-                : `Du bekommst: ${prices.verkauf.toFixed(1)}M`,
-            value: name,
-            emoji: constants.spawnerEmojis[name] || '📦'
-        };
-    });
-
-    const selectMenu = new StringSelectMenuBuilder()
-        .setCustomId('select_spawner:verkauf')
-        .setPlaceholder('Spawner auswählen...')
-        .addOptions(verkaufOptions);
-
-    const row = new ActionRowBuilder().addComponents(selectMenu);
-
-    const container = new ContainerBuilder()
-        .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent('## 💰 • Spawner Verkauf\nWähle unten den Spawner, den du **verkaufen** möchtest.')
-        )
-        .addActionRowComponents(row);
-
-    await interaction.reply({
-        components: [container],
-        flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
-    });
-    return;
-}
+        await interaction.reply({
+            components: [container],
+            flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
+        });
+        return;
+    }
 
     // === SPAWNER VERKAUF BUTTON (DYNAMIC) ===
     if (interaction.customId === 'spawner_verkaufen') {
-        const verkaufOptions = Object.entries(constants.prices)
-            .filter(([name, prices]) => prices.verkauf !== 'Stop' && prices.verkauf !== undefined)
-            .map(([name, prices]) => ({
+        const verkaufOptions = Object.entries(constants.prices).map(([name, prices]) => {
+            const isStopped = prices.verkauf === 'Stop' || prices.verkauf === undefined;
+            return {
                 label: `${constants.spawnerEmojis[name] || '📦'} ${name} Spawner`,
-                description: `Du bekommst: ${prices.verkauf.toFixed(1)}M`,
+                description: isStopped ? '⚠️ Verkauf derzeit GESPERRT' : `Du bekommst: ${prices.verkauf.toFixed(1)}M`,
                 value: name,
                 emoji: constants.spawnerEmojis[name] || '📦'
-            }));
-
-        if (verkaufOptions.length === 0) {
-            await interaction.reply({
-                content: '## ❌ • Keine Spawner verfügbar\n\nAktuell können keine Spawner verkauft werden.',
-                flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2
-            });
-            return;
-        }
+            };
+        });
 
         const selectMenu = new StringSelectMenuBuilder()
             .setCustomId('select_spawner:verkauf')

@@ -1,48 +1,18 @@
 const { ContainerBuilder, TextDisplayBuilder, SeparatorBuilder } = require('discord.js');
 
 module.exports = function buildTradeContainer(data) {
-    // === ABGEBROCHEN ===
+    let statusText;
     if (data.cancelled) {
-        return new ContainerBuilder()
-            .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(
-                    `## ❌ • Handel abgebrochen\n\n` +
-                    `**Handel #${data.handNummer}** wurde abgebrochen.\n\n` +
-                    `Dieser Thread wird in Kürze gelöscht.`
-                )
-            );
-    }
-
-    // === ABGESCHLOSSEN (warten auf Vouch) ===
-    if (data.awaitingVouch) {
+        statusText = `❌ **Trade abgebrochen!**`;
+    } else if (data.closed) {
+        statusText = `✅ **Trade abgeschlossen!**`;
+    } else if (data.awaitingVouch) {
         const vouchCount = (data.vouches || []).length;
-        return new ContainerBuilder()
-            .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(
-                    `## ⏳ • Warte auf Bewertungen (${vouchCount}/2)\n\n` +
-                    `Bitte bewertet euch gegenseitig im Thread!`
-                )
-            );
-    }
-
-    // === ABGESCHLOSSEN (beide bewertet) ===
-    if (data.closed) {
-        return new ContainerBuilder()
-            .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(
-                    `## ✅ • Handel abgeschlossen\n\n` +
-                    `Abgeschlossen von <@${data.claimedBy}>.\n` +
-                    `Dieser Thread wird in Kürze gelöscht.`
-                )
-            );
-    }
-
-    // === STANDARD (offen oder geclaimt) ===
-    let statusLine;
-    if (data.claimedBy) {
-        statusLine = `🔒 Das Ticket wurde von <@${data.claimedBy}> geclaimt.`;
+        statusText = `⏳ **Warte auf Bewertungen (${vouchCount}/2)**\n\nBitte bewertet euch gegenseitig!`;
+    } else if (data.claimedBy) {
+        statusText = `🔒 Geclaimt von <@${data.claimedBy}>`;
     } else {
-        statusLine = `🔓 Das Ticket wurde noch nicht geclaimt!`;
+        statusText = `🔓 Noch nicht geclaimt!`;
     }
 
     return new ContainerBuilder()
@@ -70,6 +40,6 @@ module.exports = function buildTradeContainer(data) {
         )
         .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
         .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(statusLine)
+            new TextDisplayBuilder().setContent(statusText)
         );
 };
