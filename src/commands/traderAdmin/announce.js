@@ -80,7 +80,7 @@ module.exports = {
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
                     `📋 Unsere **Aktuelle Preise** siehe Trading Panel.☝️\n\n` +
-                    `> ||* Geändert von <@${interaction.user.id}> *||` +
+                    `> ||* Geändert von <@${interaction.user.id}> *||\n` +
                     `||* ${rolePing} *||`
                 )
             );
