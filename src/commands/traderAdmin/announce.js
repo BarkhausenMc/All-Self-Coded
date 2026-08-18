@@ -79,7 +79,7 @@ module.exports = {
             .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
-                    `📋 **Aktuelle Preise** siehe Trading Panel.\n\n` +
+                    `📋 Unsere **Aktuelle Preise** siehe Trading Panel.☝️\n\n` +
                     `> ||Geändert von <@${interaction.user.id}>; ${rolePing}||`
                 )
             );
