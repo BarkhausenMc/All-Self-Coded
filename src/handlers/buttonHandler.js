@@ -47,7 +47,7 @@ async function logTrade(guild, trade, status) {
 async function forceCloseVouchWithChannel(channel, trade, guild) {
     try {
         if (trade.vouchEntries && trade.vouchEntries.length > 0) {
-            const vouchChannel = guild.guild.channels.cache.get(constants.VOUCH_CHANNEL_ID);
+            const vouchChannel = guild.channels.cache.get(constants.VOUCH_CHANNEL_ID);
             if (vouchChannel) {
                 const customerVouch = trade.vouchEntries.find(v => v.reviewerId === trade.kundeId);
                 const traderVouch = trade.vouchEntries.find(v => v.reviewerId === trade.claimedBy);
@@ -60,7 +60,7 @@ async function forceCloseVouchWithChannel(channel, trade, guild) {
                         new TextDisplayBuilder().setContent(
                             `## ✅ Handel abgeschlossen • #${trade.handNummer}\n\n` +
                             `**👤 Kunde:** <@${trade.kundeId}>\n` +
-                            `**🤝 Trader:** <@${trade.claimedBy ? trade.claimedBy : '—'}>`
+                            `**🤝 Trader:** <@${trade.claimedBy || '-'}>`
                         )
                     )
                     .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
@@ -135,27 +135,25 @@ async function forceCloseVouchWithChannel(channel, trade, guild) {
 }
 
 module.exports = async function handleButton(interaction) {
+    // ⚠️ IMMERSOFORT DEFERNACH DEM BUTTON-KLICK
+    await interaction.deferUpdate();
 
     // === CLAIM ===
     if (interaction.customId === 'claim') {
         const trade = findTrade(interaction.channelId);
 
         if (!trade) {
-            try {
-                await interaction.reply({ content: '❌ Trade nicht gefunden.', flags: MessageFlags.Ephemeral });
-            } catch (e) {
-                console.warn('Claim reply failed:', e.message);
-            }
+            await interaction.editReply({ content: '❌ Trade nicht gefunden.' });
             return;
         }
 
         if (trade.claimedBy) {
-            await interaction.reply({ content: `❌ Bereits von <@${trade.claimedBy}> geclaimt.`, flags: MessageFlags.Ephemeral });
+            await interaction.editReply({ content: `❌ Bereits von <@${trade.claimedBy}> geclaimt.` });
             return;
         }
 
         if (!interaction.member.roles.cache.has(constants.TRADER_ROLE_ID)) {
-            await interaction.reply({ content: '❌ Nur Trader dürfen Trades claimen.', flags: MessageFlags.Ephemeral });
+            await interaction.editReply({ content: '❌ Nur Trader dürfen Trades claimen.' });
             return;
         }
 
@@ -164,19 +162,11 @@ module.exports = async function handleButton(interaction) {
 
         try {
             await updateTradeMessage(interaction.channel, trade);
+            await interaction.editReply({ content: `✅ Du hast den Trade geclaimt!` });
         } catch (err) {
             console.error('updateTradeMessage error (claim):', err.message);
+            await interaction.editReply({ content: '✅ Trade geclaimt (mit Fehler beim Update).' });
         }
-
-        const claimContainer = new ContainerBuilder()
-            .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(
-                    `## ✅ Trade geclaimt\n\n` +
-                    `<@${interaction.user.id}> hat den Handel #${trade.handNummer} übernommen.`
-                )
-            );
-
-        await interaction.reply({ components: [claimContainer], flags: MessageFlags.IsComponentsV2 });
         return;
     }
 
@@ -185,12 +175,12 @@ module.exports = async function handleButton(interaction) {
         const trade = findTrade(interaction.channelId);
 
         if (!trade || !trade.claimedBy) {
-            await interaction.reply({ content: '❌ Trade ist nicht geclaimt.', flags: MessageFlags.Ephemeral });
+            await interaction.editReply({ content: '❌ Trade ist nicht geclaimt.' });
             return;
         }
 
         if (interaction.user.id !== trade.claimedBy) {
-            await interaction.reply({ content: `❌ Nur <@${trade.claimedBy}> kann den Trade freigeben.`, flags: MessageFlags.Ephemeral });
+            await interaction.editReply({ content: `❌ Nur <@${trade.claimedBy}> kann den Trade freigeben.` });
             return;
         }
 
@@ -199,20 +189,11 @@ module.exports = async function handleButton(interaction) {
 
         try {
             await updateTradeMessage(interaction.channel, trade);
+            await interaction.editReply({ content: `✅ Trade freigegeben!` });
         } catch (err) {
             console.error('updateTradeMessage error (freigeben):', err.message);
+            await interaction.editReply({ content: '✅ Trade freigegeben (mit Fehler beim Update).' });
         }
-
-        const freigebenContainer = new ContainerBuilder()
-            .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(
-                    `## 🔓 Trade freigegeben\n\n` +
-                    `<@${interaction.user.id}> hat den Handel #${trade.handNummer} wieder freigegeben.\n` +
-                    `Jeder Trader kann ihn jetzt neu claimen.`
-                )
-            );
-
-        await interaction.reply({ components: [freigebenContainer], flags: MessageFlags.IsComponentsV2 });
         return;
     }
 
@@ -221,16 +202,14 @@ module.exports = async function handleButton(interaction) {
         const trade = findTrade(interaction.channelId);
 
         if (!trade || !trade.claimedBy) {
-            await interaction.reply({ content: '❌ Der Trade muss erst geclaimt werden.', flags: MessageFlags.Ephemeral });
+            await interaction.editReply({ content: '❌ Der Trade muss erst geclaimt werden.' });
             return;
         }
 
         if (interaction.user.id !== trade.claimedBy) {
-            await interaction.reply({ content: `❌ Nur <@${trade.claimedBy}> darf den Trade abschließen.`, flags: MessageFlags.Ephemeral });
+            await interaction.editReply({ content: `❌ Nur <@${trade.claimedBy}> darf den Trade abschließen.` });
             return;
         }
-
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         trade.awaitingVouch = true;
         trade.vouches = [];
@@ -239,8 +218,10 @@ module.exports = async function handleButton(interaction) {
 
         try {
             await updateTradeMessage(interaction.channel, trade);
+            await interaction.editReply({ content: `✅ Trade abgeschlossen — bitte bewertet euch gegenseitig!` });
         } catch (err) {
             console.error('updateTradeMessage error (complete):', err.message);
+            await interaction.editReply({ content: '✅ Trade abgeschlossen (mit Fehler beim Update).' });
         }
 
         const starSelect = new StringSelectMenuBuilder()
@@ -260,9 +241,9 @@ module.exports = async function handleButton(interaction) {
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
                     `## 📝 • Trade Bewertung\n\n` +
-                    `Bitte **bewertet** euch gegenseitig!\n` +
-                    `Wähle unten deine **Sterne-Bewertung** aus.\n` +
-                    `**Anmerkung** oder **Problem**?\nSchreib sie nach der Sterne-Bewertung einfach in das Pop Up Feld\n\n` +
+                    `Bitte bewertet euch gegenseitig!\n` +
+                    `Wähle unten deine Sterne-Bewertung aus.\n` +
+                    `Danach kannst du noch einen Text schreiben.\n\n` +
                     `**Kunde:** <@${trade.kundeId}>\n` +
                     `**Trader:** <@${trade.claimedBy}>\n\n` +
                     `⏱️ *Das Ticket schließt automatisch in 5 Minuten.*`
@@ -271,8 +252,6 @@ module.exports = async function handleButton(interaction) {
             .addActionRowComponents(vouchRow);
 
         await interaction.channel.send({ components: [vouchContainer], flags: MessageFlags.IsComponentsV2 });
-
-        await interaction.editReply({ content: `✅ Trade abgeschlossen — bitte bewertet euch gegenseitig!` });
 
         const channelId = String(interaction.channelId);
         const guildId = interaction.guild.id;
@@ -303,14 +282,7 @@ module.exports = async function handleButton(interaction) {
         const trade = findTrade(channelIdStr);
 
         if (!trade) {
-            try {
-                await interaction.reply({
-                    content: '❌ Trade nicht gefunden oder bereits geschlossen.',
-                    flags: MessageFlags.Ephemeral
-                });
-            } catch (e) {
-                console.warn('Abbruch reply failed:', e.message);
-            }
+            await interaction.editReply({ content: '❌ Trade nicht gefunden oder bereits geschlossen.' });
             return;
         }
 
@@ -319,8 +291,6 @@ module.exports = async function handleButton(interaction) {
 
         trade.cancelled = true;
         store.save();
-
-        await interaction.deferUpdate();
 
         try {
             await updateTradeMessage(interaction.channel, trade);
@@ -357,12 +327,10 @@ module.exports = async function handleButton(interaction) {
                     )
                 );
 
-            await interaction.followUp({
-                components: [confirmationContainer],
-                flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral
-            });
+            await interaction.editReply({ components: [confirmationContainer], flags: MessageFlags.IsComponentsV2 });
         } catch (err) {
             console.error('Send error (abbruch):', err.message);
+            await interaction.editReply({ content: '✅ Abbruch-Request erhalten (Fehler beim Senden).' });
         }
 
         const guild = interaction.guild;
@@ -406,7 +374,7 @@ module.exports = async function handleButton(interaction) {
             )
             .addActionRowComponents(row);
 
-        await interaction.reply({ components: [container], flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2 });
+        await interaction.editReply({ components: [container] });
         return;
     }
 
@@ -434,7 +402,7 @@ module.exports = async function handleButton(interaction) {
             )
             .addActionRowComponents(row);
 
-        await interaction.reply({ components: [container], flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2 });
+        await interaction.editReply({ components: [container] });
         return;
     }
 };
