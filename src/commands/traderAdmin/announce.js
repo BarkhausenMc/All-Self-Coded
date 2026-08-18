@@ -18,7 +18,6 @@ module.exports = {
         ),
 
     async execute(interaction) {
-        // ⭐ SOFORT DEFER REPLY!
         await interaction.deferReply({ flags: 64 });
 
         if (!interaction.member.roles.cache.has(constants.TRADER_ADMIN_ROLE_ID)) {
@@ -26,22 +25,39 @@ module.exports = {
             return;
         }
 
-        const titel = interaction.options.getString('titel') || '📋 Aktuelle Preise';
+        const titel = interaction.options.getString('titel') || '📋 Preisänderung';
         const ping = interaction.options.getBoolean('ping') ?? false;
 
-        // Alle Preise holen
-        const priceLines = Object.entries(constants.prices).map(([name]) => {
-            const ankauf = store.getPrice(name, 'ankauf');
-            const verkauf = store.getPrice(name, 'verkauf');
-            const emoji = constants.spawnerEmojis[name] || '📦';
-            
-            const ankaufStr = ankauf === 'Stop' ? '🔴 STOP' : `🟢 ${ankauf.toFixed(1)}M`;
-            const verkaufStr = verkauf === 'Stop' ? '🔴 STOP' : `🟢 ${verkauf.toFixed(1)}M`;
-            
-            return `### ${emoji} ${name}\n🛒 Ankauf: ${ankaufStr} | 💰 Verkauf: ${verkaufStr}`;
-        }).join('\n');
+        // ⭐ LETZTE 5 MINUTEN ÄNDERUNGEN HOLEN
+        const recentChanges = store.getRecentPriceChanges(5);
 
-        // ⭐ ROLLE PING IN TEXTDISPLAY (nicht als content!)
+        if (recentChanges.length === 0) {
+            await interaction.editReply({ content: '❌ Keine Preisänderungen in den letzten 5 Minuten! Nutze erst `/setprice` oder `/toggletrade`.' });
+            return;
+        }
+
+        // ⭐ ÄNDERUNGEN FORMATIEREN
+        const changeLines = recentChanges.map(change => {
+            const emoji = constants.spawnerEmojis[change.spawner] || '📦';
+            const typLabel = change.type === 'ankauf' ? '🛒 Ankauf' : '💰 Verkauf';
+            
+            const oldStr = change.oldValue === 'Stop' ? 'GESTOPPT' : `${change.oldValue.toFixed(1)}M`;
+            const newStr = change.newValue === 'Stop' ? 'GESTOPPT' : `${change.newValue.toFixed(1)}M`;
+            
+            const isNewStop = change.newValue === 'Stop';
+            const wasStop = change.oldValue === 'Stop';
+            
+            let arrow;
+            if (isNewStop) arrow = '🔴';
+            else if (wasStop) arrow = '🟢';
+            else if (change.newValue > change.oldValue) arrow = '📈';
+            else if (change.newValue < change.oldValue) arrow = '📉';
+            else arrow = '➡️';
+            
+            return `### ${emoji} ${change.spawner} — ${typLabel}\n${arrow} ~~${oldStr}~~ → **${newStr}**\n*vor <t:${Math.floor(change.timestamp / 1000)}:R>*`;
+        }).join('\n\n');
+
+        // ⭐ ROLLE PING
         const rolePing = ping && constants.SPAWNER_PRICE_ROLE_ID
             ? `<@&${constants.SPAWNER_PRICE_ROLE_ID}>\n\n`
             : '';
@@ -50,19 +66,17 @@ module.exports = {
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
                     `## 📢 ${titel}\n\n` +
-                    `> *Die Preise wurden aktualisiert!*\n` 
+                    `${rolePing}` +
+                    `> *Folgende Preise wurden geändert:*\n` +
+                    `> *Geändert von <@${interaction.user.id}>*\n\n` +
+                    changeLines
                 )
             )
             .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
             .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(```priceLines```)
-            )
-            .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
-            .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
-                    `*Um einen Trade zu starten, gehe den #spawner Channel*\n` +
-                    `**${rolePing}**` +
-                    `> *Stand: <t:${Math.floor(Date.now() / 1000)}:R>*\n\n` 
+                    `📋 **Aktuelle Preise** siehe Trading Panel.\n\n` +
+                    `*Bei Fragen wendet euch an einen Trader Admin.*`
                 )
             );
 
@@ -70,11 +84,10 @@ module.exports = {
         const channel = interaction.guild.channels.cache.get(announceChannelId);
 
         if (!channel) {
-            await interaction.editReply({ content: '❌ Ankündigungs-Channel nicht gefunden! Überprüfe ANNOUNCE_CHANNEL_ID in der .env.' });
+            await interaction.editReply({ content: '❌ Ankündigungs-Channel nicht gefunden!' });
             return;
         }
 
-        // ⭐ COMPONENTS V2 OHNE content — Rolle-Ping ist im Container!
         await channel.send({
             components: [container],
             flags: MessageFlags.IsComponentsV2,

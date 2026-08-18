@@ -32,7 +32,6 @@ module.exports = {
         ),
 
     async execute(interaction) {
-        // ⭐ SOFORT DEFER REPLY (bevor irgendeine Prüfung!)
         await interaction.deferReply({ flags: 64 });
 
         if (!interaction.member.roles.cache.has(constants.TRADER_ADMIN_ROLE_ID)) {
@@ -47,15 +46,18 @@ module.exports = {
         const oldPrice = store.getPrice(spawner, typ);
         store.setPrice(spawner, typ, preis);
 
-        // ⭐ PANEL UPDATE über global.client (nicht interaction.channel!)
-        await store.updatePricePanel(global.client);
+        // ⭐ ÄNDERUNG AUFZEICHNEN
+        store.recordPriceChange(spawner, typ, oldPrice, preis, interaction.user.id);
+
+        // ⭐ PANEL UPDATEN
+        await store.updatePricePanel(interaction.client);
 
         const emoji = constants.spawnerEmojis[spawner] || '📦';
-        const typLabel = typ === 'ankauf' ? '🛒 ANKAUF' : '💰 VERKAUF';
-        const oldStr = oldPrice === 'Stop' ? 'GESTOPT' : `${oldPrice.toFixed(1)}M`;
+        const typLabel = typ === 'ankauf' ? '🛒 Ankauf' : '💰 Verkauf';
+        const oldStr = oldPrice === 'Stop' ? 'GESTOPPT' : `${oldPrice.toFixed(1)}M`;
 
         await interaction.editReply({
-            content: `✅ Preis aktualisiert!\n${emoji} ${spawner} — ${typLabel}: ~~${oldStr}~~ → **${preis.toFixed(1)}M**\n\n📊 Das Preis-Panel wurde automatisch aktualisiert!`
+            content: `✅ Preis aktualisiert!\n${emoji} ${spawner} — ${typLabel}: ~~${oldStr}~~ → **${preis.toFixed(1)}M**`
         });
     }
 };

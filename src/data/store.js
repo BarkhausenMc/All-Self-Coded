@@ -17,7 +17,8 @@ let data = {
     tradeCounters: {},
     trades: {},
     vouches: [],
-    traderStats: {}
+    traderStats: {},
+    priceChanges: []  // ← NEU: Preis-Änderungen tracken
 };
 
 function loadData() {
@@ -30,12 +31,15 @@ function loadData() {
         if (!data.trades) data.trades = {};
         if (!data.vouches) data.vouches = [];
         if (!data.traderStats) data.traderStats = {};
+        if (!data.priceChanges) data.priceChanges = [];
         
         console.log('✅ Datenbank geladen:', Object.keys(data.trades).length, 'aktive Trades');
         console.log('📊 Trader-Stats:', Object.keys(data.traderStats).length, 'Trader erfasst');
+        if (data.panelMessageId) console.log('📌 Panel Message ID:', data.panelMessageId);
+        if (data.panelChannelId) console.log('📌 Panel Channel ID:', data.panelChannelId);
     } catch (err) {
         console.error('❌ Fehler beim Laden:', err);
-        data = { tradeCounters: {}, trades: {}, vouches: [], traderStats: {} };
+        data = { tradeCounters: {}, trades: {}, vouches: [], traderStats: {}, priceChanges: [] };
     }
 }
 
@@ -56,9 +60,33 @@ function getPrice(spawnerName, type) {
     return constants.prices[spawnerName]?.[type] || 0;
 }
 
+// ⭐ NEU: Preis-Änderung aufzeichnen
+function recordPriceChange(spawnerName, type, oldValue, newValue, userId) {
+    data.priceChanges.push({
+        spawner: spawnerName,
+        type: type,
+        oldValue: oldValue,
+        newValue: newValue,
+        userId: userId,
+        timestamp: Date.now()
+    });
+    // Nur letzte 50 Änderungen behalten
+    if (data.priceChanges.length > 50) {
+        data.priceChanges = data.priceChanges.slice(-50);
+    }
+    saveData();
+}
+
+// ⭐ NEU: Letzte Änderungen (in Minuten) holen
+function getRecentPriceChanges(minutes) {
+    const cutoff = Date.now() - (minutes * 60 * 1000);
+    return data.priceChanges.filter(c => c.timestamp >= cutoff);
+}
+
 function setPrice(spawnerName, type, value) {
     if (!data.prices) data.prices = {};
     if (!data.prices[spawnerName]) data.prices[spawnerName] = {};
+    const oldValue = data.prices[spawnerName][type];
     data.prices[spawnerName][type] = value;
     if (constants.prices[spawnerName]) {
         constants.prices[spawnerName][type] = value;
@@ -86,28 +114,13 @@ function togglePrice(spawnerName, type) {
     return data.prices[spawnerName][type];
 }
 
-// ⭐ PANEL MESSAGE ID + CHANNEL ID SPEICHERN
-function getPanelMessageId() {
-    return data.panelMessageId || null;
-}
+function getPanelMessageId() { return data.panelMessageId || null; }
+function setPanelMessageId(messageId) { data.panelMessageId = messageId; saveData(); }
+function getPanelChannelId() { return data.panelChannelId || null; }
+function setPanelChannelId(channelId) { data.panelChannelId = channelId; saveData(); }
 
-function setPanelMessageId(messageId) {
-    data.panelMessageId = messageId;
-    saveData();
-}
-
-function getPanelChannelId() {
-    return data.panelChannelId || null;
-}
-
-function setPanelChannelId(channelId) {
-    data.panelChannelId = channelId;
-    saveData();
-}
-
-// ⭐ PRICE PANEL BUILDER
 function buildPricePanel() {
-    const priceLines = Object.entries(constants.prices).map(([name, defaultPrices]) => {
+    const priceLines = Object.entries(constants.prices).map(([name]) => {
         const dynAnkauf = getPrice(name, 'ankauf');
         const dynVerkauf = getPrice(name, 'verkauf');
         
@@ -159,19 +172,19 @@ function buildPricePanel() {
     return [container, row];
 }
 
-// ⭐ AUTO-UPDATE DES PANELS — über Client, nicht interaction.channel!
 async function updatePricePanel(client) {
     const messageId = getPanelMessageId();
     const channelId = getPanelChannelId();
+    
     if (!messageId || !channelId) {
-        console.log('⚠️ Kein Panel zum Updaten gefunden (messageId/channelId fehlt)');
+        console.log('⚠️ Panel Update übersprungen: messageId/channelId fehlt. Führe /setup spawner aus!');
         return;
     }
     
     try {
         const channel = await client.channels.fetch(channelId);
         if (!channel) {
-            console.log('⚠️ Panel Channel nicht gefunden');
+            console.log('⚠️ Panel Channel nicht gefunden:', channelId);
             return;
         }
         const msg = await channel.messages.fetch(messageId);
@@ -179,7 +192,7 @@ async function updatePricePanel(client) {
         await msg.edit({ components, flags: MessageFlags.IsComponentsV2 });
         console.log('✅ Price Panel auto-updated!');
     } catch (err) {
-        console.log('Panel update fehlgeschlagen:', err.message);
+        console.log('❌ Panel update fehlgeschlagen:', err.message);
     }
 }
 
@@ -195,6 +208,8 @@ module.exports = {
     getPrice,
     setPrice,
     togglePrice,
+    recordPriceChange,
+    getRecentPriceChanges,
     getPanelMessageId,
     setPanelMessageId,
     getPanelChannelId,
