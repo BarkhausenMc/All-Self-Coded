@@ -44,8 +44,8 @@ module.exports = {
             const emoji = constants.spawnerEmojis[change.spawner] || '📦';
             const typLabel = change.type === 'ankauf' ? '🛒 Ankauf' : '💰 Verkauf';
             
-            const oldStr = change.oldValue === 'Stop' ? 'GESTOPPT' : `${change.oldValue.toFixed(1)}M`;
-            const newStr = change.newValue === 'Stop' ? 'GESTOPPT' : `${change.newValue.toFixed(1)}M`;
+            const oldStr = change.oldValue === 'Stop' ? 'GESTOPPT' : `${parseFloat(change.oldValue).toFixed(1)}M`;
+            const newStr = change.newValue === 'Stop' ? 'GESTOPPT' : `${parseFloat(change.newValue).toFixed(1)}M`;
             
             let arrow;
             if (change.newValue === 'Stop') arrow = '🔴';
@@ -82,14 +82,13 @@ module.exports = {
             );
 
         const announceChannelId = constants.ANNOUNCE_CHANNEL_ID || constants.CHANNEL_ID;
-        const channel = interaction.guild.channels.cache.get(announceChannelId);s
+        const channel = interaction.guild.channels.cache.get(announceChannelId);
 
         if (!channel) {
             await interaction.editReply({ content: '❌ Ankündigungs-Channel nicht gefunden!' });
             return;
         }
 
-        // ⭐ ALTE ANNOUNCE NACHRICHT LÖSCHEN (falls vorhanden)
         const lastMessageId = store.getLastAnnounceMessageId();
         if (lastMessageId) {
             try {
@@ -103,14 +102,12 @@ module.exports = {
 
         await interaction.editReply({ content: '✅ Ankündigung wird gesendet...' });
 
-        // ⭐ NEUE NACHRICHT SENDEN
         const newMessage = await channel.send({
             components: [container],
             flags: MessageFlags.IsComponentsV2,
             allowedMentions: { parse: ['roles', 'everyone', 'users'] }
         });
 
-        // ⭐ NEUE MESSAGE ID SPEICHERN
         store.setLastAnnounceMessageId(newMessage.id);
 
         await interaction.editReply({ content: `✅ Ankündigung gesendet in <#${announceChannelId}>!` });
