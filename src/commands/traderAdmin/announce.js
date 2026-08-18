@@ -69,7 +69,6 @@ module.exports = {
                     `## 📢 ${titel}\n\n` +
                     `${rolePing}` +
                     `> *Folgende Preise wurden geändert:*\n` +
-                    `> *Geändert von <@${interaction.user.id}>*\n\n` +
                     changeLines
                 )
             )
@@ -77,7 +76,7 @@ module.exports = {
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
                     `📋 **Aktuelle Preise** siehe Trading Panel.\n\n` +
-                    `*Bei Fragen wendet euch an einen Trader Admin.*`
+                    `> *Geändert von <@${interaction.user.id}>*`
                 )
             );
 
