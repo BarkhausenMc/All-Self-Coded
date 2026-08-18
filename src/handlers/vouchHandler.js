@@ -12,41 +12,14 @@ const {
 const store = require('../data/store');
 const constants = require('../config/constants');
 const updateTradeMessage = require('../utils/updateTradeMessage');
-const buildTradeContainer = require('../utils/buildTradeContainer');
 const buttonHandler = require('./buttonHandler');
 
 // === HELPER: Trade finden (NUR Strings!) ===
 function findTrade(channelId) {
     const id = String(channelId);
-    if (store.trades[id]) {
-        return store.trades[id];
-    }
+    if (store.trades[id]) return store.trades[id];
     console.warn(`[VAUCH] Trade NICHT gefunden für Channel: "${id}"`);
-    console.warn(`Verfügbare Keys:`, Object.keys(store.trades));
     return null;
-}
-// === TRADE LOGGING ===
-async function logTrade(interaction, trade, status) {
-    const logChannel = interaction.guild.channels.cache.get(constants.LOG_CHANNEL_ID);
-    if (!logChannel) return;
-
-    const logContainer = new ContainerBuilder()
-        .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(
-                `## ${trade.emoji} • Handel #${trade.handNummer}\n\n` +
-                `**Status:** ${status}\n` +
-                `**Zeit:** <t:${Math.floor(Date.now() / 1000)}:R>\n\n` +
-                `**👤 Kunde:** <@${trade.kundeId}>\n` +
-                `**🎮 ING:** \`${trade.ingameName}\`\n` +
-                `**🤝 Trader:** ${trade.claimedBy ? `<@${trade.claimedBy}>` : 'Nicht geclaimt'}\n\n` +
-                `**${trade.spawnerEmoji} Spawner:** ${trade.spawnerType}\n` +
-                `**📦 Menge:** ${trade.amount}\n` +
-                `**💵 Preis/Stk:** ${trade.pricePerUnit.toFixed(1)}M\n` +
-                `**💰 Gesamtpreis:** ${trade.totalPrice.toFixed(1)}M`
-            )
-        );
-
-    await logChannel.send({ components: [logContainer], flags: MessageFlags.IsComponentsV2 });
 }
 
 // === TEIL 1: STERN-AUSWAHL → MODAL ===
@@ -120,19 +93,17 @@ async function handleVouchModal(interaction) {
     trade.vouches.push(reviewerId);
     store.save();
 
-    // === LIVE-UPDATE: Trade-Nachricht updaten (zeigt wer bewertet hat) ===
+    // === LIVE-UPDATE ===
     try {
         await updateTradeMessage(interaction.channel, trade);
-    } catch (err) {
-        // Ignorieren falls Nachricht nicht gefunden
-    }
+    } catch (err) {}
 
     if (trade.vouches.length >= 2) {
         // === BEIDE HABEN BEWERTET ===
-        
+
         // Timeout löschen!
-        const timeout = buttonHandler.vouchTimeouts.get(interaction.channelId);
-        if (timeout) { clearTimeout(timeout); buttonHandler.vouchTimeouts.delete(interaction.channelId); }
+        const timeout = buttonHandler.vouchTimeouts.get(String(interaction.channelId));
+        if (timeout) { clearTimeout(timeout); buttonHandler.vouchTimeouts.delete(String(interaction.channelId)); }
 
         const vouch1 = trade.vouchEntries[0];
         const vouch2 = trade.vouchEntries[1];
@@ -208,23 +179,22 @@ async function handleVouchModal(interaction) {
         trade.closed = true;
         store.save();
 
-        // Trade-Nachricht final updaten
         try {
             await updateTradeMessage(interaction.channel, trade);
         } catch (err) {}
 
         // Loggen
-        await logTrade(interaction, trade, '✅ ABGESCHLOSSEN (2/2 Bewertungen)');
+        await buttonHandler.logTrade(interaction.guild, trade, '✅ ABGESCHLOSSEN (2/2 Bewertungen)');
 
-        // Countdown + Löschen
         await interaction.channel.send({ content: `⏳ Dieses Ticket wird in **5 Sekunden** gelöscht...` });
 
         await interaction.reply({ content: `✅ Beide haben bewertet! Trade abgeschlossen und im Vouch-Channel gepostet.`, flags: MessageFlags.Ephemeral });
 
+        const channelId = String(interaction.channelId);
         setTimeout(async () => {
             try {
                 await interaction.channel.delete();
-                delete store.trades[interaction.channelId];
+                delete store.trades[channelId];
                 store.save();
             } catch (err) {
                 console.log('Fehler beim Löschen:', err.message);
@@ -232,7 +202,6 @@ async function handleVouchModal(interaction) {
         }, 5000);
 
     } else {
-        // === ERSTE BEWERTUNG — Warte auf zweite ===
         await interaction.reply({ content: `✅ Danke für deine Bewertung! (1/2)\nWarte noch auf den anderen Trade-Partner.\n\n⏱️ Das Ticket schließt automatisch in 5 Minuten.`, flags: MessageFlags.Ephemeral });
     }
 }
