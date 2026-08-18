@@ -272,90 +272,69 @@ module.exports = async function handleButton(interaction) {
         return;
     }
 
-    // === ABBRUCH ===
-    if (interaction.customId === 'abbruch') {
-        const channelIdStr = String(interaction.channelId);
-        const trade = findTrade(channelIdStr);
+    // === ABBRUCH BUTTON ===
+if (interaction.customId === 'abbruch') {
+    const channelIdStr = String(interaction.channelId);
+    const trade = findTrade(channelIdStr);  // <- ERSTE PRÜFUNG!
 
-        if (!trade) {
-            try {
-                await interaction.reply({
-                    content: '❌ Trade nicht gefunden oder bereits geschlossen.',
-                    flags: MessageFlags.Ephemeral
-                });
-            } catch (e) {
-                console.warn('Abbruch reply failed:', e.message);
-            }
-            return;
-        }
-
-        const timeout = vouchTimeouts.get(channelIdStr);
-        if (timeout) { clearTimeout(timeout); vouchTimeouts.delete(channelIdStr); }
-
-        trade.cancelled = true;
-        store.save();
-
-        await interaction.deferUpdate();
-
-        try {
-            await updateTradeMessage(interaction.channel, trade);
-        } catch (err) {
-            console.error('updateTradeMessage error (abbruch):', err.message);
-        }
-
-        try {
-            const abbruchContainer = new ContainerBuilder()
-                .addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent(
-                        `## ❌ Trade abgebrochen\n\n` +
-                        `Der Handel #${trade.handNummer} wurde von <@${interaction.user.id}> abgebrochen.\n` +
-                        `Das Ticket wird gelöscht.`
-                    )
-                );
-
-            await interaction.channel.send({ components: [abbruchContainer], flags: MessageFlags.IsComponentsV2 });
-
-            const countdownContainer = new ContainerBuilder()
-                .addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent(
-                        `## ⏳ Ticket wird gelöscht\n\n` +
-                        `Dieses Ticket wird in **5 Sekunden** gelöscht...`
-                    )
-                );
-
-            await interaction.channel.send({ components: [countdownContainer], flags: MessageFlags.IsComponentsV2 });
-
-            const confirmationContainer = new ContainerBuilder()
-                .addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent(
-                        `✅ Deine Anfrage wurde verarbeitet. Das Ticket wird jetzt geschlossen.`
-                    )
-                );
-
-            await interaction.followUp({
-                components: [confirmationContainer],
-                flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral
-            });
-        } catch (err) {
-            console.error('Send error (abbruch):', err.message);
-        }
-
-        const guild = interaction.guild;
-
-        setTimeout(async () => {
-            try {
-                await logTrade(guild, trade, '❌ ABGEBROCHEN');
-                await interaction.channel.delete();
-                delete store.trades[channelIdStr];
-                store.save();
-                console.log(`✅ Ticket ${channelIdStr} gelöscht.`);
-            } catch (err) {
-                console.error('Delete error:', err.message);
-            }
-        }, 5000);
-
-        return;
+    if (!trade) {
+        // Wenn kein Trade → sofort antworten und RAUS
+        await interaction.reply({
+            content: '❌ Trade nicht gefunden oder bereits geschlossen.',
+            flags: MessageFlags.Ephemeral
+        });
+        return;  // <- SOFORT RETURN, NICHT WEITERMACHEN!
     }
+
+    // Nur wenn Trade existiert: deferUpdate aufrufen
+    await interaction.deferUpdate();
+
+    // Timeout löschen
+    const timeout = vouchTimeouts.get(channelIdStr);
+    if (timeout) { clearTimeout(timeout); vouchTimeouts.delete(channelIdStr); }
+
+    trade.cancelled = true;
+    store.save();
+
+    try {
+        await updateTradeMessage(interaction.channel, trade);
+    } catch (err) {
+        console.error('updateTradeMessage error (abbruch):', err.message);
+    }
+
+    // NUR NOCH EINEN Container senden
+    const abbruchContainer = new ContainerBuilder()
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+                `## ❌ Trade abgebrochen\n\n` +
+                `Der Handel #${trade.handNummer} wurde von <@${interaction.user.id}> abgebrochen.\n` +
+                `Das Ticket wird in **5 Sekunden** gelöscht...`
+            )
+        );
+
+    await interaction.channel.send({ components: [abbruchContainer], flags: MessageFlags.IsComponentsV2 });
+
+    // Nur ephemeral FollowUp (kein separater Countdown-Container!)
+    await interaction.followUp({
+        content: `✅ Deine Anfrage wurde verarbeitet. Das Ticket wird jetzt geschlossen.`,
+        flags: MessageFlags.Ephemeral
+    });
+
+    const guild = interaction.guild;
+
+    setTimeout(async () => {
+        try {
+            await logTrade(guild, trade, '❌ ABGEBROCHEN');
+            await interaction.channel.delete();
+            delete store.trades[channelIdStr];
+            store.save();
+        } catch (err) {
+            console.error('Delete error:', err.message);
+        }
+    }, 5000);
+
+    return;
+}
 
     // === SPAWNER ANKAUF ===
     if (interaction.customId === 'spawner_ankaufen') {
