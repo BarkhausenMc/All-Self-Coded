@@ -26,8 +26,16 @@ module.exports = {
         ),
 
     async execute(interaction) {
+        // ⭐ SOFORT DEFERREPLY (BEVOR ALLES ANDERE!)
+        try {
+            await interaction.deferReply({ flags: 64 });
+        } catch (err) {
+            console.log('❌ deferReply fehlgeschlagen (Interaction abgelaufen?):', err.message);
+            return;
+        }
+
         if (!interaction.member.roles.cache.has(constants.TRADER_ADMIN_ROLE_ID)) {
-            await interaction.reply({ content: '❌ Nur Trader Admins dürfen Trades stoppen!', flags: 64 });
+            await interaction.editReply({ content: '❌ Nur Trader Admins dürfen Trades stoppen!' });
             return;
         }
 
@@ -43,13 +51,10 @@ module.exports = {
         const oldStatus = oldValue === 'Stop' ? 'GESTOPPT' : `${oldValue.toFixed(1)}M`;
         const newStatus = newValue === 'Stop' ? 'GESTOPPT' : `${newValue.toFixed(1)}M`;
 
-        // ⭐ SOFORT REPLY (vor Panel-Update!)
-        await interaction.reply({
-            content: `${emoji} ${spawner} — ${typLabel}: ~~${oldStatus}~~ → **${newStatus}**\n\n📊 Panel wird aktualisiert...`,
-            flags: 64
+        await interaction.editReply({
+            content: `${emoji} ${spawner} — ${typLabel}: ~~${oldStatus}~~ → **${newStatus}**\n\n📊 Panel wird aktualisiert...`
         });
 
-        // ⭐ PANEL UPDATE IM HINTERGRUND
         store.updatePricePanel(interaction.client).catch(err => {
             console.error('Panel update error:', err.message);
         });

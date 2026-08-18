@@ -32,8 +32,16 @@ module.exports = {
         ),
 
     async execute(interaction) {
+        // ⭐ SCHLÜSSELWERT: SOFORT DEFERREPLY (BEVOR ALLES ANDERE!)
+        try {
+            await interaction.deferReply({ flags: 64 });
+        } catch (err) {
+            console.log('❌ deferReply fehlgeschlagen (Interaction abgelaufen?):', err.message);
+            return; // Abbrechen, keine weiteren Versuche!
+        }
+
         if (!interaction.member.roles.cache.has(constants.TRADER_ADMIN_ROLE_ID)) {
-            await interaction.reply({ content: '❌ Nur Trader Admins dürfen Preise setzen!', flags: 64 });
+            await interaction.editReply({ content: '❌ Nur Trader Admins dürfen Preise setzen!' });
             return;
         }
 
@@ -49,13 +57,12 @@ module.exports = {
         const typLabel = typ === 'ankauf' ? '🛒 Ankauf' : '💰 Verkauf';
         const oldStr = oldPrice === 'Stop' ? 'GESTOPPT' : `${oldPrice.toFixed(1)}M`;
 
-        // ⭐ SOFORT REPLY (vor Panel-Update!)
-        await interaction.reply({
-            content: `✅ Preis aktualisiert!\n${emoji} ${spawner} — ${typLabel}: ~~${oldStr}~~ → **${preis.toFixed(1)}M**\n\n📊 Panel wird aktualisiert...`,
-            flags: 64
+        // ⭐ EDIT REPLY (nach erfolgreichem defer)
+        await interaction.editReply({
+            content: `✅ Preis aktualisiert!\n${emoji} ${spawner} — ${typLabel}: ~~${oldStr}~~ → **${preis.toFixed(1)}M**\n\n📊 Panel wird aktualisiert...`
         });
 
-        // ⭐ PANEL UPDATE IM HINTERGRUND
+        // ⭐ PANEL UPDATE IM HINTERGRUND (nicht warten!)
         store.updatePricePanel(interaction.client).catch(err => {
             console.error('Panel update error:', err.message);
         });
