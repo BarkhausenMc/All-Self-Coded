@@ -32,7 +32,6 @@ module.exports = {
         ),
 
     async execute(interaction) {
-        // ⭐ TRADER ADMIN CHECK
         if (!interaction.member.roles.cache.has(constants.TRADER_ADMIN_ROLE_ID)) {
             await interaction.reply({
                 content: '❌ Nur Trader Admins dürfen Preise setzen!',

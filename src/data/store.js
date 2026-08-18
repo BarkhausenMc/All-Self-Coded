@@ -9,7 +9,7 @@ let data = {
     trades: {},
     vouches: [],
     traderStats: {},
-    prices: {}  // ← NEU! Dynamische Preise
+    prices: {}
 };
 
 function loadData() {
@@ -18,7 +18,6 @@ function loadData() {
             const raw = fs.readFileSync(DATA_FILE, 'utf8');
             data = JSON.parse(raw);
         }
-        // Defaults setzen
         if (!data.tradeCounters) data.tradeCounters = {};
         if (!data.trades) data.trades = {};
         if (!data.vouches) data.vouches = [];
@@ -45,16 +44,13 @@ function saveData() {
     }
 }
 
-// ⭐ HILFER: Preise holen (dynamisch oder default)
 function getPrice(spawnerName, type) {
     if (data.prices[spawnerName] && data.prices[spawnerName][type] !== undefined) {
         return data.prices[spawnerName][type];
     }
-    // Fallback auf default
     return constants.defaultPrices[spawnerName]?.[type] || 0;
 }
 
-// ⭐ HILFER: Preis setzen
 function setPrice(spawnerName, type, value) {
     if (!data.prices[spawnerName]) {
         data.prices[spawnerName] = {};
@@ -63,17 +59,14 @@ function setPrice(spawnerName, type, value) {
     saveData();
 }
 
-// ⭐ HILFER: Preis togglen (Stop ↔ Freigeben)
 function togglePrice(spawnerName, type) {
     if (!data.prices[spawnerName]) {
         data.prices[spawnerName] = {};
     }
     const current = data.prices[spawnerName][type];
     if (current === 'Stop') {
-        // Zurück auf default
         data.prices[spawnerName][type] = constants.defaultPrices[spawnerName]?.[type] || 0;
     } else {
-        // Auf Stop setzen
         data.prices[spawnerName][type] = 'Stop';
     }
     saveData();
