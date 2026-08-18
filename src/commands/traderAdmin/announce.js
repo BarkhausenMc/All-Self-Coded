@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, MessageFlags } = require('discord.js');
+const { SlashCommandBuilder, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, MessageFlags, AllowedMentionsType } = require('discord.js');
 const constants = require('../../config/constants');
 const store = require('../../data/store');
 
@@ -73,12 +73,12 @@ module.exports = {
             return;
         }
 
-        const content = ping ? `@everyone` : undefined;
-
+        // ⭐ WICHTIG: content NICHT mit IsComponentsV2 kombinieren
+        // Stattdessen: allowed_mentions für @everyone verwenden
         await channel.send({
-            content,
+            content: ping ? '@everyone' : undefined,
             components: [container],
-            flags: MessageFlags.IsComponentsV2
+            allowedMentions: ping ? { parse: ['everyone', 'roles', 'users'] } : undefined
         });
 
         await interaction.editReply({ content: `✅ Ankündigung gesendet in <#${announceChannelId}>!` });
