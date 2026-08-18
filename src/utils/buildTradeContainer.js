@@ -1,5 +1,4 @@
 const { ContainerBuilder, TextDisplayBuilder, SeparatorBuilder } = require('discord.js');
-
 module.exports = function buildTradeContainer(data) {
     let statusText;
     
@@ -26,7 +25,7 @@ module.exports = function buildTradeContainer(data) {
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(
                 `## ${data.emoji} • Spawner ${data.action}\n\n` +
-                `**🤝 • Handel #${data.handNummer}** ||** <@&${constants.TRADER_ROLE_ID}> **|| `
+                `**🤝 • Handel #${data.handNummer}**`
             )
         )
         .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
