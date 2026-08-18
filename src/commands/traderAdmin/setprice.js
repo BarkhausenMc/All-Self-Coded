@@ -32,11 +32,11 @@ module.exports = {
         ),
 
     async execute(interaction) {
+        // ⭐ SOFORT DEFER REPLY (bevor irgendeine Prüfung!)
+        await interaction.deferReply({ flags: 64 });
+
         if (!interaction.member.roles.cache.has(constants.TRADER_ADMIN_ROLE_ID)) {
-            await interaction.reply({
-                content: '❌ Nur Trader Admins dürfen Preise setzen!',
-                flags: 64
-            });
+            await interaction.editReply({ content: '❌ Nur Trader Admins dürfen Preise setzen!' });
             return;
         }
 
@@ -44,22 +44,18 @@ module.exports = {
         const typ = interaction.options.getString('typ');
         const preis = interaction.options.getNumber('preis');
 
-        // Alten Preis merken
         const oldPrice = store.getPrice(spawner, typ);
-
-        // Neuen Preis setzen
         store.setPrice(spawner, typ, preis);
 
-        // ⭐ PRICE PANEL AUTO-UPDATE
-        await store.updatePricePanel(interaction.channel);
+        // ⭐ PANEL UPDATE über global.client (nicht interaction.channel!)
+        await store.updatePricePanel(global.client);
 
         const emoji = constants.spawnerEmojis[spawner] || '📦';
         const typLabel = typ === 'ankauf' ? '🛒 ANKAUF' : '💰 VERKAUF';
         const oldStr = oldPrice === 'Stop' ? 'GESTOPT' : `${oldPrice.toFixed(1)}M`;
 
-        await interaction.reply({
-            content: `✅ Preis aktualisiert!\n${emoji} ${spawner} — ${typLabel}: ~~${oldStr}~~ → **${preis.toFixed(1)}M**\n\n📊 Das Preis-Panel wurde automatisch aktualisiert!`,
-            flags: 64
+        await interaction.editReply({
+            content: `✅ Preis aktualisiert!\n${emoji} ${spawner} — ${typLabel}: ~~${oldStr}~~ → **${preis.toFixed(1)}M**\n\n📊 Das Preis-Panel wurde automatisch aktualisiert!`
         });
     }
 };

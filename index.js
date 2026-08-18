@@ -147,7 +147,8 @@ client.on('interactionCreate', async (interaction) => {
 
                     // ⭐ PANEL MESSAGE ID SPEICHERN
                     store.setPanelMessageId(panelMsg.id);
-
+                    store.setPanelMessageId(panelMsg.id);
+                    store.setPanelChannelId(interaction.channel.id);
                     await interaction.editReply({ content: '✅ Spawner Trading Panel gesendet!' });
                     return;
                 }

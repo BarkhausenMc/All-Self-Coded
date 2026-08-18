@@ -86,7 +86,7 @@ function togglePrice(spawnerName, type) {
     return data.prices[spawnerName][type];
 }
 
-// ⭐ PANEL MESSAGE ID SPEICHERN
+// ⭐ PANEL MESSAGE ID + CHANNEL ID SPEICHERN
 function getPanelMessageId() {
     return data.panelMessageId || null;
 }
@@ -96,7 +96,16 @@ function setPanelMessageId(messageId) {
     saveData();
 }
 
-// ⭐ PRICE PANEL BUILDER (wiederverwendbar)
+function getPanelChannelId() {
+    return data.panelChannelId || null;
+}
+
+function setPanelChannelId(channelId) {
+    data.panelChannelId = channelId;
+    saveData();
+}
+
+// ⭐ PRICE PANEL BUILDER
 function buildPricePanel() {
     const priceLines = Object.entries(constants.prices).map(([name, defaultPrices]) => {
         const dynAnkauf = getPrice(name, 'ankauf');
@@ -150,12 +159,21 @@ function buildPricePanel() {
     return [container, row];
 }
 
-// ⭐ AUTO-UPDATE DES PANELS
-async function updatePricePanel(channel) {
+// ⭐ AUTO-UPDATE DES PANELS — über Client, nicht interaction.channel!
+async function updatePricePanel(client) {
     const messageId = getPanelMessageId();
-    if (!messageId) return;
+    const channelId = getPanelChannelId();
+    if (!messageId || !channelId) {
+        console.log('⚠️ Kein Panel zum Updaten gefunden (messageId/channelId fehlt)');
+        return;
+    }
     
     try {
+        const channel = await client.channels.fetch(channelId);
+        if (!channel) {
+            console.log('⚠️ Panel Channel nicht gefunden');
+            return;
+        }
         const msg = await channel.messages.fetch(messageId);
         const components = buildPricePanel();
         await msg.edit({ components, flags: MessageFlags.IsComponentsV2 });
@@ -179,6 +197,8 @@ module.exports = {
     togglePrice,
     getPanelMessageId,
     setPanelMessageId,
+    getPanelChannelId,
+    setPanelChannelId,
     buildPricePanel,
     updatePricePanel
 };
