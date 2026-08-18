@@ -268,27 +268,53 @@ module.exports = async function handleButton(interaction) {
     }
 
                 // === ABBRUCH BUTTON ===
-    if (interaction.customId === 'abbruch') {
-        const trade = findTrade(interaction.channelId);
-
         if (!trade) {
-            await interaction.reply({ content: '❌ Trade nicht gefunden.', flags: MessageFlags.Ephemeral });
-            return;
+        // Wenn Trade nicht gefunden, antworten wir direkt und stoppen hier.
+        // Wichtig: Keine deferUpdate, sondern direktes reply, falls möglich, 
+        // oder einfach ignorieren, wenn die Interaction schon weg ist.
+        try {
+            await interaction.reply({ 
+                content: '❌ Trade nicht gefunden oder bereits geschlossen.', 
+                flags: MessageFlags.Ephemeral 
+            });
+        } catch (e) {
+            // Falls reply schon gescheitert ist (Interaction bekannt), einfach loggen
+            console.warn('Konnte auf Abbruch nicht antworten (Trade nicht gefunden):', e.message);
         }
+        return;
+    }
 
-        // Timeout löschen
-        const timeout = vouchTimeouts.get(String(interaction.channelId));
-        if (timeout) { clearTimeout(timeout); vouchTimeouts.delete(String(interaction.channelId)); }
+    // 2. Timeout löschen
+    const channelIdStr = String(interaction.channelId);
+    const timeout = vouchTimeouts.get(channelIdStr);
+    if (timeout) { 
+        clearTimeout(timeout); 
+        vouchTimeouts.delete(channelIdStr); 
+    }
 
-        trade.cancelled = true;
-        store.save();
+    // 3. Trade Status updaten
+    trade.cancelled = true;
+    store.save(); // Speichern sofort
 
-        await updateTradeMessage(interaction.channel, trade);
+    // 4. Interaction ACKNOWLEDGEN (definitiv einmal)
+    // Wir nutzen deferUpdate, da der Button in einer bestehenden Nachricht war
+    await interaction.deferUpdate(); 
 
-        // ⭐ DEFER UPDATE statt reply (verhindert "already acknowledged")
-        await interaction.deferUpdate();
+    // 5. Update der Trade-Nachricht (falls vorhanden)
+    // Hier musst du sicherstellen, dass updateTradeMessage existiert und funktioniert
+    // Falls es crasht, sollten wir es abfangen, aber nicht den Rest stoppen
+    try {
+        if (typeof updateTradeMessage === 'function') {
+            await updateTradeMessage(interaction.channel, trade);
+        }
+    } catch (err) {
+        console.error('Fehler beim Update der Trade-Nachricht:', err.message);
+    }
 
-        // 1. Abbruch-Container als eigenständige Nachricht
+    // 6. Neue Nachrichten senden (Abbruch + Countdown)
+    // Da wir deferUpdate gemacht haben, können wir jetzt neue Nachrichten senden
+    try {
+        // Nachricht 1: Abbruch Info
         const abbruchContainer = new ContainerBuilder()
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
@@ -298,9 +324,12 @@ module.exports = async function handleButton(interaction) {
                 )
             );
 
-        await interaction.channel.send({ components: [abbruchContainer], flags: MessageFlags.IsComponentsV2 });
+        await interaction.channel.send({ 
+            components: [abbruchContainer], 
+            flags: MessageFlags.IsComponentsV2 
+        });
 
-        // 2. Countdown-Container
+        // Nachricht 2: Countdown
         const countdownContainer = new ContainerBuilder()
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
@@ -309,9 +338,12 @@ module.exports = async function handleButton(interaction) {
                 )
             );
 
-        await interaction.channel.send({ components: [countdownContainer], flags: MessageFlags.IsComponentsV2 });
+        await interaction.channel.send({ 
+            components: [countdownContainer], 
+            flags: MessageFlags.IsComponentsV2 
+        });
 
-        // 3. Ephemeral Bestätigung (separate Nachricht)
+        // Nachricht 3: Ephemeral Bestätigung
         const confirmationContainer = new ContainerBuilder()
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
@@ -325,21 +357,36 @@ module.exports = async function handleButton(interaction) {
         });
 
         const guild = interaction.guild;
-        const channelId = String(interaction.channelId);
-
+        
+        // 7. Delay zum Löschen
         setTimeout(async () => {
             try {
                 await logTrade(guild, trade, '❌ ABGEBROCHEN');
-                await interaction.channel.delete();
-                delete store.trades[channelId];
+                
+                // Channel löschen (Thread)
+                if (interaction.channel.deletable) {
+                    await interaction.channel.delete();
+                }
+                
+                // Aus Store entfernen
+                delete store.trades[channelIdStr];
                 store.save();
+                
+                console.log(`✅ Ticket ${channelIdStr} erfolgreich gelöscht.`);
             } catch (err) {
-                console.log('Fehler beim Löschen:', err.message);
+                console.error('Fehler beim endgültigen Löschen:', err.message);
             }
         }, 5000);
-        return;
+
+    } catch (err) {
+        console.error('Fehler beim Senden der Abbruch-Nachrichten:', err.message);
+        // Auch wenn Senden fehlschlägt, versuchen wir trotzdem zu löschen?
+        // Nein, besser nicht, sonst bleibt ein Zombie-Ticket übrig.
     }
     
+    return;
+
+
     // === SPAWNER ANKAUF BUTTON ===
     if (interaction.customId === 'spawner_ankaufen') {
         const ankaufOptions = Object.entries(constants.prices).map(([name, prices]) => {
