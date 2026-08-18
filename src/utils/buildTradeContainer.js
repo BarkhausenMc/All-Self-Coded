@@ -63,4 +63,4 @@ module.exports = function buildTradeContainer(data) {
             new TextDisplayBuilder().setContent(statusText)
         );
 
-}; s
+}; 
