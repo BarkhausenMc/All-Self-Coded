@@ -20,7 +20,7 @@ module.exports = function buildActionButtonRow(data) {
             new ButtonBuilder()
                 .setCustomId('abbruch')
                 .setLabel('Abbrechen')
-                .setStyle(ButtonStyle.Danger)
+                .setStyle(ButtonStyle.Secondary)
                 .setEmoji('🗑️')
         );
     } else {
@@ -34,7 +34,7 @@ module.exports = function buildActionButtonRow(data) {
             new ButtonBuilder()
                 .setCustomId('abbruch')
                 .setLabel('Abbrechen')
-                .setStyle(ButtonStyle.Danger)
+                .setStyle(ButtonStyle.Secondary)
                 .setEmoji('🗑️')
         );
     }
