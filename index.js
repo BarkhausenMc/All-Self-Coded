@@ -23,22 +23,7 @@ const handleSelectMenu = require('./src/handlers/selectMenuHandler');
 const handleModal = require('./src/handlers/modalHandler');
 const { handleVouchSelect, handleVouchModal } = require('./src/handlers/vouchHandler');
 
-global.client = null;
-const client = new Client({
-    intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMembers
-    ]
-});
-global.client = client;
-
 // ⭐ COMMANDS AUS ORDNER LADEN
-let commands = [];
-
-// === NEU: Commands aus Ordner laden ===
-const fs = require('fs');
-const path = require('path');
-
 const commandMap = new Map();
 const commandPath = path.join(__dirname, 'src/commands');
 if (fs.existsSync(commandPath)) {
@@ -80,8 +65,16 @@ for (const cmd of commandMap.values()) {
     commands.push(cmd.data);
 }
 
-// Convert to JSON for registration
-const commandsJSON = commands.map(cmd => cmd.toJSON());
+global.client = null;
+const client = new Client({
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent
+    ]
+});
+global.client = client;
 
 // === READY EVENT ===
 client.once('ready', async () => {
@@ -92,9 +85,9 @@ client.once('ready', async () => {
         
         await rest.put(
             Routes.applicationGuildCommands(client.user.id, process.env.GUILD_ID),
-            { body: commandsJSON }
+            { body: commands.map(c => c.toJSON()) }
         );
-        console.log('✅ Slash Commands registriert (Guild)!', commandsJSON.length, 'Commands');
+        console.log('✅ Slash Commands registriert (Guild)!', commands.length, 'Commands');
     } catch (error) {
         console.error('❌ Fehler beim Registrieren der Commands:', error);
     }
@@ -108,15 +101,22 @@ client.on('interactionCreate', async (interaction) => {
         // ==========================================
         if (interaction.isChatInputCommand()) {
 
+            // ⭐ EXTERNE COMMANDS (setprice, toggletrade, etc.)
+            if (commandMap.has(interaction.commandName)) {
+                const command = commandMap.get(interaction.commandName);
+                await command.execute(interaction);
+                return;
+            }
+
             // --- /setup spawner ---
             if (interaction.commandName === 'setup') {
                 if (interaction.options.getSubcommand() === 'spawner') {
-                    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-                    
                     if (!interaction.memberPermissions.has('Administrator')) {
-                        await interaction.editReply({ content: '❌ Nur Administratoren können das Setup ausführen.' });
+                        await interaction.reply({ content: '❌ Nur Administratoren können das Setup ausführen.', flags: MessageFlags.Ephemeral });
                         return;
                     }
+
+                    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
                     // Alte Panels löschen
                     try {
@@ -137,13 +137,9 @@ client.on('interactionCreate', async (interaction) => {
                         console.log('Fehler beim Aufräumen alter Panels:', err.message);
                     }
 
-                    // ⭐ PREISE DYNAMISCH HOLEN MIT NULL-SCHUTZ
-                    const priceLines = Object.entries(constants.defaultPrices || {}).map(([name, defaultPrices]) => {
-                        const ankaufVal = store.getPrice ? store.getPrice(name, 'ankauf') : constants.defaultPrices[name]?.ankauf || 0;
-                        const verkaufVal = store.getPrice ? store.getPrice(name, 'verkauf') : constants.defaultPrices[name]?.verkauf || 0;
-                        
-                        const ankauf = ankaufVal === 'Stop' ? 'STOP' : `${ankaufVal.toFixed(1)}M`;
-                        const verkauf = verkaufVal === 'Stop' ? 'STOP' : `${verkaufVal.toFixed(1)}M`;
+                    const priceLines = Object.entries(constants.prices).map(([name, prices]) => {
+                        const ankauf = prices.ankauf === 'Stop' ? 'STOP' : `${prices.ankauf.toFixed(1)}M`;
+                        const verkauf = prices.verkauf === 'Stop' ? 'STOP' : `${prices.verkauf.toFixed(1)}M`;
                         const emoji = constants.spawnerEmojis[name] || '📦';
                         return `${emoji} ${name.padEnd(12)} ${ankauf.padStart(10)}  ${verkauf.padStart(10)}`;
                     }).join('\n');
@@ -202,23 +198,14 @@ client.on('interactionCreate', async (interaction) => {
                 await interaction.deferReply({ flags: MessageFlags.Ephemeral });
                 
                 const targetUser = interaction.options.getUser('trader') || interaction.user;
-                
-                // ⭐ NULL-SCHUTZ FÜR traderStats
-                const traderStats = store.traderStats || {};
-                const stats = traderStats[targetUser.id];
+                const stats = store.traderStats?.[targetUser.id];
 
                 if (!stats || stats.completedTrades === 0) {
                     await interaction.editReply({ content: `❌ <@${targetUser.id}> hat noch keine abgeschlossenen Trades.` });
                     return;
                 }
 
-                const avgStars = stats.starCount > 0
-                    ? (stats.totalStars / stats.starCount).toFixed(1)
-                    : 'N/A';
-
-                const profit = (stats.totalEarned || 0) - (stats.totalSpent || 0);
-                const profitEmoji = profit >= 0 ? '📈' : '📉';
-                const profitStr = profit >= 0 ? `+${profit.toFixed(1)}M` : `${profit.toFixed(1)}M`;
+                const avgStars = stats.starCount > 0 ? (stats.totalStars / stats.starCount).toFixed(1) : 'N/A';
 
                 const statsContainer = new ContainerBuilder()
                     .addTextDisplayComponents(
@@ -239,10 +226,7 @@ client.on('interactionCreate', async (interaction) => {
                         )
                     );
 
-                await interaction.editReply({
-                    components: [statsContainer],
-                    flags: MessageFlags.IsComponentsV2
-                });
+                await interaction.editReply({ components: [statsContainer], flags: MessageFlags.IsComponentsV2 });
                 return;
             }
 
@@ -250,10 +234,7 @@ client.on('interactionCreate', async (interaction) => {
             if (interaction.commandName === 'trader-top') {
                 await interaction.deferReply({ flags: MessageFlags.Ephemeral });
                 
-                // ⭐ NULL-SCHUTZ FÜR traderStats
-                const traderStats = store.traderStats || {};
-
-                const allStats = Object.entries(traderStats)
+                const allStats = Object.entries(store.traderStats || {})
                     .filter(([, s]) => s && s.completedTrades > 0)
                     .sort((a, b) => b[1].completedTrades - a[1].completedTrades)
                     .slice(0, 10);
@@ -279,24 +260,7 @@ client.on('interactionCreate', async (interaction) => {
                         )
                     );
 
-                await interaction.editReply({
-                    components: [topContainer],
-                    flags: MessageFlags.IsComponentsV2
-                });
-                return;
-            }
-
-                        // ⭐ EXTERNE COMMANDS (setprice, toggletrade, etc.)
-            if (commandMap.has(interaction.commandName)) {
-                const command = commandMap.get(interaction.commandName);
-                try {
-                    await command.execute(interaction);
-                } catch (err) {
-                    console.error('Fehler in externem Command:', err);
-                    if (!interaction.replied) {
-                        await interaction.reply({ content: '❌ Fehler beim Ausführen.', flags: MessageFlags.Ephemeral }).catch(() => {});
-                    }
-                }
+                await interaction.editReply({ components: [topContainer], flags: MessageFlags.IsComponentsV2 });
                 return;
             }
         }
@@ -318,17 +282,7 @@ client.on('interactionCreate', async (interaction) => {
     } catch (error) {
         console.error('Fehler bei Interaction:', error);
         if (!interaction.replied && !interaction.deferred) {
-            try {
-                await interaction.reply({ content: '❌ Ein Fehler ist aufgetreten.', flags: MessageFlags.Ephemeral });
-            } catch (e) {
-                // Ignorieren wenn bereits geantwortet
-            }
-        } else if (interaction.deferred && !interaction.replied) {
-            try {
-                await interaction.editReply({ content: '❌ Ein Fehler ist aufgetreten.' });
-            } catch (e) {
-                // Ignorieren
-            }
+            await interaction.reply({ content: '❌ Ein Fehler ist aufgetreten.', flags: MessageFlags.Ephemeral }).catch(() => {});
         }
     }
 });
