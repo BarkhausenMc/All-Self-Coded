@@ -15,18 +15,13 @@ const buildTradeContainer = require('../utils/buildTradeContainer');
 // === TIMEOUT MAP (nicht persistent) ===
 const vouchTimeouts = new Map();
 
-// === HELPER: Trade finden ===
+// === HELPER: Trade finden (NUR Strings, kein parseInt!) ===
 function findTrade(channelId) {
-    const variants = [
-        channelId, String(channelId),
-        String(parseInt(channelId)), parseInt(channelId),
-        channelId.toString()
-    ];
-    const uniqueVariants = [...new Set(variants)];
-    for (const variant of uniqueVariants) {
-        if (store.trades[variant]) return store.trades[variant];
+    const id = String(channelId);
+    if (store.trades[id]) {
+        return store.trades[id];
     }
-    console.warn(`⚠️ Trade NICHT gefunden für Channel: "${channelId}"`);
+    console.warn(`⚠️ Trade NICHT gefunden für Channel: "${id}"`);
     console.warn(`Verfügbare Keys:`, Object.keys(store.trades));
     return null;
 }
@@ -144,7 +139,7 @@ async function forceCloseVouch(interaction, trade) {
 
 module.exports = async function handleButton(interaction) {
 
-    // === CLAIM BUTTON ===
+       // === CLAIM BUTTON ===
     if (interaction.customId === 'claim') {
         const trade = findTrade(interaction.channelId);
 

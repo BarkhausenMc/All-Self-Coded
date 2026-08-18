@@ -15,16 +15,16 @@ const updateTradeMessage = require('../utils/updateTradeMessage');
 const buildTradeContainer = require('../utils/buildTradeContainer');
 const buttonHandler = require('./buttonHandler');
 
-// === HELPER: Trade finden ===
+// === HELPER: Trade finden (NUR Strings!) ===
 function findTrade(channelId) {
-    const variants = [channelId, String(channelId), String(parseInt(channelId)), parseInt(channelId), channelId.toString()];
-    const uniqueVariants = [...new Set(variants)];
-    for (const variant of uniqueVariants) {
-        if (store.trades[variant]) return store.trades[variant];
+    const id = String(channelId);
+    if (store.trades[id]) {
+        return store.trades[id];
     }
+    console.warn(`[VAUCH] Trade NICHT gefunden für Channel: "${id}"`);
+    console.warn(`Verfügbare Keys:`, Object.keys(store.trades));
     return null;
 }
-
 // === TRADE LOGGING ===
 async function logTrade(interaction, trade, status) {
     const logChannel = interaction.guild.channels.cache.get(constants.LOG_CHANNEL_ID);
