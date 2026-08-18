@@ -18,7 +18,8 @@ let data = {
     trades: {},
     vouches: [],
     traderStats: {},
-    priceChanges: []  // ← NEU: Preis-Änderungen tracken
+    priceChanges: [],
+    lastAnnounceMessageId: null  // ← NEU!
 };
 
 function loadData() {
@@ -32,14 +33,16 @@ function loadData() {
         if (!data.vouches) data.vouches = [];
         if (!data.traderStats) data.traderStats = {};
         if (!data.priceChanges) data.priceChanges = [];
+        if (data.lastAnnounceMessageId === undefined) data.lastAnnounceMessageId = null;
         
         console.log('✅ Datenbank geladen:', Object.keys(data.trades).length, 'aktive Trades');
         console.log('📊 Trader-Stats:', Object.keys(data.traderStats).length, 'Trader erfasst');
         if (data.panelMessageId) console.log('📌 Panel Message ID:', data.panelMessageId);
         if (data.panelChannelId) console.log('📌 Panel Channel ID:', data.panelChannelId);
+        if (data.lastAnnounceMessageId) console.log('📢 Last Announce Message ID:', data.lastAnnounceMessageId);
     } catch (err) {
         console.error('❌ Fehler beim Laden:', err);
-        data = { tradeCounters: {}, trades: {}, vouches: [], traderStats: {}, priceChanges: [] };
+        data = { tradeCounters: {}, trades: {}, vouches: [], traderStats: {}, priceChanges: [], lastAnnounceMessageId: null };
     }
 }
 
@@ -60,7 +63,6 @@ function getPrice(spawnerName, type) {
     return constants.prices[spawnerName]?.[type] || 0;
 }
 
-// ⭐ NEU: Preis-Änderung aufzeichnen
 function recordPriceChange(spawnerName, type, oldValue, newValue, userId) {
     data.priceChanges.push({
         spawner: spawnerName,
@@ -70,14 +72,12 @@ function recordPriceChange(spawnerName, type, oldValue, newValue, userId) {
         userId: userId,
         timestamp: Date.now()
     });
-    // Nur letzte 50 Änderungen behalten
     if (data.priceChanges.length > 50) {
         data.priceChanges = data.priceChanges.slice(-50);
     }
     saveData();
 }
 
-// ⭐ NEU: Letzte Änderungen (in Minuten) holen
 function getRecentPriceChanges(minutes) {
     const cutoff = Date.now() - (minutes * 60 * 1000);
     return data.priceChanges.filter(c => c.timestamp >= cutoff);
@@ -118,6 +118,10 @@ function getPanelMessageId() { return data.panelMessageId || null; }
 function setPanelMessageId(messageId) { data.panelMessageId = messageId; saveData(); }
 function getPanelChannelId() { return data.panelChannelId || null; }
 function setPanelChannelId(channelId) { data.panelChannelId = channelId; saveData(); }
+
+// ⭐ LAST ANNOUNCE MESSAGE ID FUNCTIONS
+function getLastAnnounceMessageId() { return data.lastAnnounceMessageId || null; }
+function setLastAnnounceMessageId(messageId) { data.lastAnnounceMessageId = messageId; saveData(); }
 
 function buildPricePanel() {
     const priceLines = Object.entries(constants.prices).map(([name]) => {
@@ -177,7 +181,7 @@ async function updatePricePanel(client) {
     const channelId = getPanelChannelId();
     
     if (!messageId || !channelId) {
-        console.log('⚠️ Panel Update übersprungen: messageId/channelId fehlt. Führe /setup spawner aus!');
+        console.log('⚠️ Panel Update übersprungen: messageId/channelId fehlt.');
         return;
     }
     
@@ -214,6 +218,8 @@ module.exports = {
     setPanelMessageId,
     getPanelChannelId,
     setPanelChannelId,
+    getLastAnnounceMessageId,
+    setLastAnnounceMessageId,
     buildPricePanel,
     updatePricePanel
 };

@@ -18,11 +18,10 @@ module.exports = {
         ),
 
     async execute(interaction) {
-        // ⭐ SOFORT DEFERREPLY (BEVOR ALLES ANDERE!)
         try {
             await interaction.deferReply({ flags: 64 });
         } catch (err) {
-            console.log('❌ deferReply fehlgeschlagen (Interaction abgelaufen?):', err.message);
+            console.log('❌ deferReply fehlgeschlagen:', err.message);
             return;
         }
 
@@ -37,7 +36,7 @@ module.exports = {
         const recentChanges = store.getRecentPriceChanges(5);
 
         if (recentChanges.length === 0) {
-            await interaction.editReply({ content: '❌ Keine Preisänderungen in den letzten 5 Minuten! Nutze erst `/setprice` oder `/toggletrade`.' });
+            await interaction.editReply({ content: '❌ Keine Preisänderungen in den letzten 5 Minuten!' });
             return;
         }
 
@@ -83,22 +82,36 @@ module.exports = {
             );
 
         const announceChannelId = constants.ANNOUNCE_CHANNEL_ID || constants.CHANNEL_ID;
-        const channel = interaction.guild.channels.cache.get(announceChannelId);
+        const channel = interaction.guild.channels.cache.get(announceChannelId);s
 
         if (!channel) {
             await interaction.editReply({ content: '❌ Ankündigungs-Channel nicht gefunden!' });
             return;
         }
 
-        // ⭐ ZUERST DUMMY-REPLY (damit der User weiß was los ist)
+        // ⭐ ALTE ANNOUNCE NACHRICHT LÖSCHEN (falls vorhanden)
+        const lastMessageId = store.getLastAnnounceMessageId();
+        if (lastMessageId) {
+            try {
+                const lastMsg = await channel.messages.fetch(lastMessageId);
+                await lastMsg.delete();
+                console.log('🗑️ Alte Announce-Nachricht gelöscht:', lastMessageId);
+            } catch (err) {
+                console.log('⚠️ Alte Announce nicht gefunden/gelöscht:', err.message);
+            }
+        }
+
         await interaction.editReply({ content: '✅ Ankündigung wird gesendet...' });
 
-        // ⭐ DANN ERST SENDEN
-        await channel.send({
+        // ⭐ NEUE NACHRICHT SENDEN
+        const newMessage = await channel.send({
             components: [container],
             flags: MessageFlags.IsComponentsV2,
             allowedMentions: { parse: ['roles', 'everyone', 'users'] }
         });
+
+        // ⭐ NEUE MESSAGE ID SPEICHERN
+        store.setLastAnnounceMessageId(newMessage.id);
 
         await interaction.editReply({ content: `✅ Ankündigung gesendet in <#${announceChannelId}>!` });
     }
