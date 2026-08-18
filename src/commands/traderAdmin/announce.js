@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, MessageFlags, AllowedMentionsType } = require('discord.js');
+const { SlashCommandBuilder } = require('discord.js');
 const constants = require('../../config/constants');
 const store = require('../../data/store');
 
@@ -13,7 +13,7 @@ module.exports = {
         )
         .addBooleanOption(opt =>
             opt.setName('ping')
-                .setDescription('Soll @everyone gepingt werden?')
+                .setDescription('Soll die Spawner Price Rolle gepingt werden?')
                 .setRequired(false)
         ),
 
@@ -37,32 +37,26 @@ module.exports = {
             const verkauf = store.getPrice(name, 'verkauf');
             const emoji = constants.spawnerEmojis[name] || '📦';
             
-            const ankaufStr = ankauf === 'Stop' ? '🔴 STOP' : `🟢 ${ankauf.toFixed(1)}M`;
-            const verkaufStr = verkauf === 'Stop' ? '🔴 STOP' : `🟢 ${verkauf.toFixed(1)}M`;
+            const ankaufStr = ankauf === 'Stop' ? '🔴 STOP' : `${ankauf.toFixed(1)}M`;
+            const verkaufStr = verkauf === 'Stop' ? '🔴 STOP' : `${verkauf.toFixed(1)}M`;
             
-            return `### ${emoji} ${name}\n🛒 Ankauf: ${ankaufStr} | 💰 Verkauf: ${verkaufStr}`;
-        }).join('\n\n');
+            return `${emoji} \`${name.padEnd(10)}\` | 🛒 Ankauf: ${ankaufStr.padEnd(12)} | 💰 Verkauf: ${verkaufStr.padEnd(12)}`;
+        }).join('\n');
 
-        const container = new ContainerBuilder()
-            .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(
-                    `## 📢 ${titel}\n\n` +
-                    `> *Die Preise wurden aktualisiert!*\n` +
-                    `> *Stand: <t:${Math.floor(Date.now() / 1000)}:R>*\n\n` +
-                    `**Geändert von:** <@${interaction.user.id}>`
-                )
-            )
-            .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
-            .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(priceLines)
-            )
-            .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
-            .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(
-                    `*Bei Fragen wendet euch an einen Trader Admin.*\n` +
-                    `*Um einen Trade zu starten, gehe ins Trading Panel.*`
-                )
-            );
+        const rolePing = ping && constants.SPAWNER_PRICE_ROLE_ID 
+            ? `<@&${constants.SPAWNER_PRICE_ROLE_ID}>\n\n` 
+            : '';
+
+        const announceContent = 
+            `## 📢 ${titel}\n\n` +
+            `${rolePing}` +
+            '> *Die Preise wurden aktualisiert!*\n' +
+            `> *Stand: <t:${Math.floor(Date.now() / 1000)}:R>*\n\n` +
+            '**Aktuelle Preise:**\n' +
+            `\`\`\`diff\n${priceLines}\n\`\`\`\n\n` +
+            `**Geändert von:** <@${interaction.user.id}>\n\n` +
+            `*Bei Fragen wendet euch an einen Trader Admin.*\n` +
+            `*Um einen Trade zu starten, gehe ins Trading Panel.*`;
 
         // In welchen Channel posten?
         const announceChannelId = constants.ANNOUNCE_CHANNEL_ID || constants.CHANNEL_ID;
@@ -73,12 +67,9 @@ module.exports = {
             return;
         }
 
-        // ⭐ WICHTIG: content NICHT mit IsComponentsV2 kombinieren
-        // Stattdessen: allowed_mentions für @everyone verwenden
+        // ⭐ EINFACH TEXT OHNE COMPONENTS (kein IsComponentsV2 nötig)
         await channel.send({
-            content: ping ? '@everyone' : undefined,
-            components: [container],
-            allowedMentions: ping ? { parse: ['everyone', 'roles', 'users'] } : undefined
+            content: announceContent
         });
 
         await interaction.editReply({ content: `✅ Ankündigung gesendet in <#${announceChannelId}>!` });
