@@ -167,7 +167,13 @@ module.exports = async function handleButton(interaction) {
         store.save();
 
         await updateTradeMessage(interaction.channel, trade);
-        await interaction.reply({ content: `✅ Du hast den Trade geclaimt!`});
+        const claimContainer = new ContainerBuilder()
+    .addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(
+            `## ✅ Trade geclaimt\n\n` +
+            `<@${interaction.user.id}> hat den Handel übernommen!`
+        )
+    );
         return;
     }
 
@@ -189,7 +195,13 @@ module.exports = async function handleButton(interaction) {
         store.save();
 
         await updateTradeMessage(interaction.channel, trade);
-        await interaction.reply({ content: `🔓 Trade freigegeben! Jeder Trader kann ihn jetzt neu claimen.`, flags: MessageFlags.Ephemeral });
+        const freigebenContainer = new ContainerBuilder()
+    .addTextDisplayComponents(
+        new TextDisplayBuilder().setContent(
+            `## 🔓 Trade freigegeben\n\n` +
+            `Der Trade wurde freigegeben! Jeder Trader kann ihn jetzt neu claimen.`
+        )
+    );
         return;
     }
 
