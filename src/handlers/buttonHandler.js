@@ -167,7 +167,7 @@ module.exports = async function handleButton(interaction) {
         store.save();
 
         await updateTradeMessage(interaction.channel, trade);
-        await interaction.reply({ content: `✅ Du hast den Trade geclaimt!`, flags: MessageFlags.Ephemeral });
+        await interaction.reply({ content: `✅ Du hast den Trade geclaimt!`});
         return;
     }
 
