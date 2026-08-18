@@ -11,10 +11,8 @@ const store = require('../data/store');
 const constants = require('../config/constants');
 const updateTradeMessage = require('../utils/updateTradeMessage');
 
-// === TIMEOUT MAP ===
 const vouchTimeouts = new Map();
 
-// === HELPER: Trade finden (NUR Strings!) ===
 function findTrade(channelId) {
     const id = String(channelId);
     if (store.trades[id]) return store.trades[id];
@@ -23,7 +21,6 @@ function findTrade(channelId) {
     return null;
 }
 
-// === TRADE LOGGING ===
 async function logTrade(guild, trade, status) {
     const logChannel = guild.channels.cache.get(constants.LOG_CHANNEL_ID);
     if (!logChannel) return;
@@ -47,10 +44,8 @@ async function logTrade(guild, trade, status) {
     await logChannel.send({ components: [logContainer], flags: MessageFlags.IsComponentsV2 });
 }
 
-// === FORCE CLOSE VOUCH (mit Channel, nicht Interaction) ===
 async function forceCloseVouchWithChannel(channel, trade, guild) {
     try {
-        // Vouches ins Vouch-Channel posten
         if (trade.vouchEntries && trade.vouchEntries.length > 0) {
             const vouchChannel = guild.channels.cache.get(constants.VOUCH_CHANNEL_ID);
             if (vouchChannel) {
@@ -75,7 +70,6 @@ async function forceCloseVouchWithChannel(channel, trade, guild) {
             }
         }
 
-        // Stats updaten
         if (trade.claimedBy && store.traderStats) {
             if (!store.traderStats[trade.claimedBy]) {
                 store.traderStats[trade.claimedBy] = {
@@ -96,10 +90,8 @@ async function forceCloseVouchWithChannel(channel, trade, guild) {
             store.save();
         }
 
-        // Loggen
         await logTrade(guild, trade, `✅ ABGESCHLOSSEN (${(trade.vouches || []).length}/2 Bewertungen)`);
 
-        // Countdown + Löschen
         await channel.send({ content: `⏳ Dieses Ticket wird in **5 Sekunden** gelöscht...` });
 
         setTimeout(async () => {
@@ -119,12 +111,16 @@ async function forceCloseVouchWithChannel(channel, trade, guild) {
 
 module.exports = async function handleButton(interaction) {
 
-    // === CLAIM BUTTON ===
+    // === CLAIM ===
     if (interaction.customId === 'claim') {
         const trade = findTrade(interaction.channelId);
 
         if (!trade) {
-            await interaction.reply({ content: '❌ Trade nicht gefunden.', flags: MessageFlags.Ephemeral });
+            try {
+                await interaction.reply({ content: '❌ Trade nicht gefunden.', flags: MessageFlags.Ephemeral });
+            } catch (e) {
+                console.warn('Claim reply failed:', e.message);
+            }
             return;
         }
 
@@ -141,7 +137,11 @@ module.exports = async function handleButton(interaction) {
         trade.claimedBy = interaction.user.id;
         store.save();
 
-        await updateTradeMessage(interaction.channel, trade);
+        try {
+            await updateTradeMessage(interaction.channel, trade);
+        } catch (err) {
+            console.error('updateTradeMessage error (claim):', err.message);
+        }
 
         const claimContainer = new ContainerBuilder()
             .addTextDisplayComponents(
@@ -155,7 +155,7 @@ module.exports = async function handleButton(interaction) {
         return;
     }
 
-    // === FREIGEBEN BUTTON ===
+    // === FREIGEBEN ===
     if (interaction.customId === 'freigeben') {
         const trade = findTrade(interaction.channelId);
 
@@ -172,7 +172,11 @@ module.exports = async function handleButton(interaction) {
         trade.claimedBy = null;
         store.save();
 
-        await updateTradeMessage(interaction.channel, trade);
+        try {
+            await updateTradeMessage(interaction.channel, trade);
+        } catch (err) {
+            console.error('updateTradeMessage error (freigeben):', err.message);
+        }
 
         const freigebenContainer = new ContainerBuilder()
             .addTextDisplayComponents(
@@ -187,7 +191,7 @@ module.exports = async function handleButton(interaction) {
         return;
     }
 
-    // === ALS ANGEKAUFT MARKIEREN → Vouch-Phase ===
+    // === COMPLETE (Vouch-Phase) ===
     if (interaction.customId === 'complete') {
         const trade = findTrade(interaction.channelId);
 
@@ -201,7 +205,6 @@ module.exports = async function handleButton(interaction) {
             return;
         }
 
-        // ⭐ SOFORT deferReply!
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         trade.awaitingVouch = true;
@@ -209,7 +212,11 @@ module.exports = async function handleButton(interaction) {
         trade.vouchEntries = [];
         store.save();
 
-        await updateTradeMessage(interaction.channel, trade);
+        try {
+            await updateTradeMessage(interaction.channel, trade);
+        } catch (err) {
+            console.error('updateTradeMessage error (complete):', err.message);
+        }
 
         const starSelect = new StringSelectMenuBuilder()
             .setCustomId('vouch_stars')
@@ -242,12 +249,10 @@ module.exports = async function handleButton(interaction) {
 
         await interaction.editReply({ content: `✅ Trade abgeschlossen — bitte bewertet euch gegenseitig!` });
 
-        // === 5 MINUTEN TIMEOUT ===
         const channelId = String(interaction.channelId);
         const guildId = interaction.guild.id;
 
         const timeout = setTimeout(async () => {
-            console.log(`⏰ Vouch-Timeout für Channel ${channelId}`);
             try {
                 const guild = await interaction.client.guilds.fetch(guildId);
                 const channel = await guild.channels.fetch(channelId);
@@ -259,7 +264,7 @@ module.exports = async function handleButton(interaction) {
                 await channel.send({ content: `⏰ **5 Minuten vorbei!** Das Ticket wird mit den bisherigen Bewertungen geschlossen.` });
                 await forceCloseVouchWithChannel(channel, currentTrade, guild);
             } catch (err) {
-                console.error('Fehler im Vouch-Timeout:', err.message);
+                console.error('Vouch-Timeout error:', err.message);
             }
         }, 5 * 60 * 1000);
 
@@ -267,127 +272,92 @@ module.exports = async function handleButton(interaction) {
         return;
     }
 
-                // === ABBRUCH BUTTON ===
+    // === ABBRUCH ===
+    if (interaction.customId === 'abbruch') {
+        const channelIdStr = String(interaction.channelId);
+        const trade = findTrade(channelIdStr);
+
         if (!trade) {
-        // Wenn Trade nicht gefunden, antworten wir direkt und stoppen hier.
-        // Wichtig: Keine deferUpdate, sondern direktes reply, falls möglich, 
-        // oder einfach ignorieren, wenn die Interaction schon weg ist.
+            try {
+                await interaction.reply({
+                    content: '❌ Trade nicht gefunden oder bereits geschlossen.',
+                    flags: MessageFlags.Ephemeral
+                });
+            } catch (e) {
+                console.warn('Abbruch reply failed:', e.message);
+            }
+            return;
+        }
+
+        const timeout = vouchTimeouts.get(channelIdStr);
+        if (timeout) { clearTimeout(timeout); vouchTimeouts.delete(channelIdStr); }
+
+        trade.cancelled = true;
+        store.save();
+
+        await interaction.deferUpdate();
+
         try {
-            await interaction.reply({ 
-                content: '❌ Trade nicht gefunden oder bereits geschlossen.', 
-                flags: MessageFlags.Ephemeral 
-            });
-        } catch (e) {
-            // Falls reply schon gescheitert ist (Interaction bekannt), einfach loggen
-            console.warn('Konnte auf Abbruch nicht antworten (Trade nicht gefunden):', e.message);
-        }
-        return;
-    }
-
-    // 2. Timeout löschen
-    const channelIdStr = String(interaction.channelId);
-    const timeout = vouchTimeouts.get(channelIdStr);
-    if (timeout) { 
-        clearTimeout(timeout); 
-        vouchTimeouts.delete(channelIdStr); 
-    }
-
-    // 3. Trade Status updaten
-    trade.cancelled = true;
-    store.save(); // Speichern sofort
-
-    // 4. Interaction ACKNOWLEDGEN (definitiv einmal)
-    // Wir nutzen deferUpdate, da der Button in einer bestehenden Nachricht war
-    await interaction.deferUpdate(); 
-
-    // 5. Update der Trade-Nachricht (falls vorhanden)
-    // Hier musst du sicherstellen, dass updateTradeMessage existiert und funktioniert
-    // Falls es crasht, sollten wir es abfangen, aber nicht den Rest stoppen
-    try {
-        if (typeof updateTradeMessage === 'function') {
             await updateTradeMessage(interaction.channel, trade);
+        } catch (err) {
+            console.error('updateTradeMessage error (abbruch):', err.message);
         }
-    } catch (err) {
-        console.error('Fehler beim Update der Trade-Nachricht:', err.message);
-    }
 
-    // 6. Neue Nachrichten senden (Abbruch + Countdown)
-    // Da wir deferUpdate gemacht haben, können wir jetzt neue Nachrichten senden
-    try {
-        // Nachricht 1: Abbruch Info
-        const abbruchContainer = new ContainerBuilder()
-            .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(
-                    `## ❌ Trade abgebrochen\n\n` +
-                    `Der Handel #${trade.handNummer} wurde von <@${interaction.user.id}> abgebrochen.\n` +
-                    `Das Ticket wird gelöscht.`
-                )
-            );
+        try {
+            const abbruchContainer = new ContainerBuilder()
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(
+                        `## ❌ Trade abgebrochen\n\n` +
+                        `Der Handel #${trade.handNummer} wurde von <@${interaction.user.id}> abgebrochen.\n` +
+                        `Das Ticket wird gelöscht.`
+                    )
+                );
 
-        await interaction.channel.send({ 
-            components: [abbruchContainer], 
-            flags: MessageFlags.IsComponentsV2 
-        });
+            await interaction.channel.send({ components: [abbruchContainer], flags: MessageFlags.IsComponentsV2 });
 
-        // Nachricht 2: Countdown
-        const countdownContainer = new ContainerBuilder()
-            .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(
-                    `## ⏳ Ticket wird gelöscht\n\n` +
-                    `Dieses Ticket wird in **5 Sekunden** gelöscht...`
-                )
-            );
+            const countdownContainer = new ContainerBuilder()
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(
+                        `## ⏳ Ticket wird gelöscht\n\n` +
+                        `Dieses Ticket wird in **5 Sekunden** gelöscht...`
+                    )
+                );
 
-        await interaction.channel.send({ 
-            components: [countdownContainer], 
-            flags: MessageFlags.IsComponentsV2 
-        });
+            await interaction.channel.send({ components: [countdownContainer], flags: MessageFlags.IsComponentsV2 });
 
-        // Nachricht 3: Ephemeral Bestätigung
-        const confirmationContainer = new ContainerBuilder()
-            .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(
-                    `✅ Deine Anfrage wurde verarbeitet. Das Ticket wird jetzt geschlossen.`
-                )
-            );
+            const confirmationContainer = new ContainerBuilder()
+                .addTextDisplayComponents(
+                    new TextDisplayBuilder().setContent(
+                        `✅ Deine Anfrage wurde verarbeitet. Das Ticket wird jetzt geschlossen.`
+                    )
+                );
 
-        await interaction.followUp({
-            components: [confirmationContainer],
-            flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral
-        });
+            await interaction.followUp({
+                components: [confirmationContainer],
+                flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral
+            });
+        } catch (err) {
+            console.error('Send error (abbruch):', err.message);
+        }
 
         const guild = interaction.guild;
-        
-        // 7. Delay zum Löschen
+
         setTimeout(async () => {
             try {
                 await logTrade(guild, trade, '❌ ABGEBROCHEN');
-                
-                // Channel löschen (Thread)
-                if (interaction.channel.deletable) {
-                    await interaction.channel.delete();
-                }
-                
-                // Aus Store entfernen
+                await interaction.channel.delete();
                 delete store.trades[channelIdStr];
                 store.save();
-                
-                console.log(`✅ Ticket ${channelIdStr} erfolgreich gelöscht.`);
+                console.log(`✅ Ticket ${channelIdStr} gelöscht.`);
             } catch (err) {
-                console.error('Fehler beim endgültigen Löschen:', err.message);
+                console.error('Delete error:', err.message);
             }
         }, 5000);
 
-    } catch (err) {
-        console.error('Fehler beim Senden der Abbruch-Nachrichten:', err.message);
-        // Auch wenn Senden fehlschlägt, versuchen wir trotzdem zu löschen?
-        // Nein, besser nicht, sonst bleibt ein Zombie-Ticket übrig.
+        return;
     }
-    
-    return;
 
-
-    // === SPAWNER ANKAUF BUTTON ===
+    // === SPAWNER ANKAUF ===
     if (interaction.customId === 'spawner_ankaufen') {
         const ankaufOptions = Object.entries(constants.prices).map(([name, prices]) => {
             const isStopped = prices.ankauf === 'Stop' || prices.ankauf === undefined;
@@ -415,7 +385,7 @@ module.exports = async function handleButton(interaction) {
         return;
     }
 
-    // === SPAWNER VERKAUF BUTTON ===
+    // === SPAWNER VERKAUF ===
     if (interaction.customId === 'spawner_verkaufen') {
         const verkaufOptions = Object.entries(constants.prices).map(([name, prices]) => {
             const isStopped = prices.verkauf === 'Stop' || prices.verkauf === undefined;
