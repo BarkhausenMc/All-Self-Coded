@@ -35,25 +35,47 @@ function saveData() {
         const dir = path.dirname(DATA_FILE);
         if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
         fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
-        console.log('💾 Datenbank gespeichert');
     } catch (err) {
         console.error('❌ Fehler beim Speichern:', err);
     }
 }
 
-// ⭐ HILFSFUNKTIONEN FÜR PREISE (NEU)
 function getPrice(spawnerName, type) {
+    if (data.prices && data.prices[spawnerName] && data.prices[spawnerName][type] !== undefined) {
+        return data.prices[spawnerName][type];
+    }
     return constants.prices[spawnerName]?.[type] || 0;
 }
 
 function setPrice(spawnerName, type, value) {
-    // In Zukunft hier speichern, jetzt nur Log
-    console.log(`Preis gesetzt: ${spawnerName} ${type} = ${value}`);
+    if (!data.prices) data.prices = {};
+    if (!data.prices[spawnerName]) data.prices[spawnerName] = {};
+    data.prices[spawnerName][type] = value;
+    // Auch in constants updaten damit andere Dateien sofort den neuen Preis sehen
+    if (constants.prices[spawnerName]) {
+        constants.prices[spawnerName][type] = value;
+    }
+    saveData();
 }
 
 function togglePrice(spawnerName, type) {
-    // In Zukunft hier speichern, jetzt nur Log
-    console.log(`Preis toggled: ${spawnerName} ${type}`);
+    if (!data.prices) data.prices = {};
+    if (!data.prices[spawnerName]) data.prices[spawnerName] = {};
+    const current = data.prices[spawnerName][type];
+    if (current === 'Stop') {
+        const defaultValue = constants.prices[spawnerName]?.[type] || 0;
+        data.prices[spawnerName][type] = defaultValue;
+        if (constants.prices[spawnerName]) {
+            constants.prices[spawnerName][type] = defaultValue;
+        }
+    } else {
+        data.prices[spawnerName][type] = 'Stop';
+        if (constants.prices[spawnerName]) {
+            constants.prices[spawnerName][type] = 'Stop';
+        }
+    }
+    saveData();
+    return data.prices[spawnerName][type];
 }
 
 loadData();

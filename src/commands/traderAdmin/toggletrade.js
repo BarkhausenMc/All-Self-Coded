@@ -37,13 +37,15 @@ module.exports = {
         const spawner = interaction.options.getString('spawner');
         const typ = interaction.options.getString('typ');
 
-        store.togglePrice(spawner, typ);
+        const newValue = store.togglePrice(spawner, typ);
+        const isStopped = newValue === 'Stop';
 
         const emoji = constants.spawnerEmojis[spawner] || '📦';
         const typLabel = typ === 'ankauf' ? '🛒 ANKAUF' : '💰 VERKAUF';
+        const status = isStopped ? '🔴 GESTOPT' : '🟢 FREIGEGEBEN';
 
         await interaction.reply({
-            content: `${emoji} ${spawner} — ${typLabel}: **$\{typ === 'ankauf' ? 'Ankauf' : 'Verkauf'}**`,
+            content: `${emoji} ${spawner} — ${typLabel}: **${status}**`,
             flags: 64
         });
     }

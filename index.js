@@ -35,8 +35,26 @@ global.client = client;
 // ⭐ COMMANDS AUS ORDNER LADEN
 let commands = [];
 
-// Grund-Commands (setup, trader-stats, trader-top)
-commands.push(
+// === NEU: Commands aus Ordner laden ===
+const fs = require('fs');
+const path = require('path');
+
+const commandMap = new Map();
+const commandPath = path.join(__dirname, 'src/commands');
+if (fs.existsSync(commandPath)) {
+    for (const folder of fs.readdirSync(commandPath)) {
+        const folderPath = path.join(commandPath, folder);
+        if (!fs.statSync(folderPath).isDirectory()) continue;
+        for (const file of fs.readdirSync(folderPath).filter(f => f.endsWith('.js'))) {
+            const cmd = require(path.join(folderPath, file));
+            if (cmd.data && cmd.execute) {
+                commandMap.set(cmd.data.name, cmd);
+            }
+        }
+    }
+}
+
+const commands = [
     new SlashCommandBuilder()
         .setName('setup')
         .setDescription('Setup-Befehle für den Bot')
@@ -55,24 +73,11 @@ commands.push(
     new SlashCommandBuilder()
         .setName('trader-top')
         .setDescription('Zeigt die Top 10 Trader nach abgeschlossenen Trades')
-);
+];
 
-// ⭐ COMMANDS AUS src/commands/ LADEN
-const commandPath = path.join(__dirname, 'src/commands');
-if (fs.existsSync(commandPath)) {
-    const adminFolders = fs.readdirSync(commandPath);
-    for (const folder of adminFolders) {
-        const folderPath = path.join(commandPath, folder);
-        if (fs.statSync(folderPath).isDirectory()) {
-            const commandFiles = fs.readdirSync(folderPath).filter(file => file.endsWith('.js'));
-            for (const file of commandFiles) {
-                const command = require(path.join(folderPath, file));
-                if ('data' in command && 'execute' in command) {
-                    commands.push(command.data);
-                }
-            }
-        }
-    }
+// ⭐ NEUE COMMANDS HINZUFÜGEN
+for (const cmd of commandMap.values()) {
+    commands.push(cmd.data);
 }
 
 // Convert to JSON for registration
@@ -281,7 +286,19 @@ client.on('interactionCreate', async (interaction) => {
                 return;
             }
 
-            // ⭐ EXTERN COMMANDS (setprice, toggletrade) — WIRD AUTOMATISCH GELADEN
+                        // ⭐ EXTERNE COMMANDS (setprice, toggletrade, etc.)
+            if (commandMap.has(interaction.commandName)) {
+                const command = commandMap.get(interaction.commandName);
+                try {
+                    await command.execute(interaction);
+                } catch (err) {
+                    console.error('Fehler in externem Command:', err);
+                    if (!interaction.replied) {
+                        await interaction.reply({ content: '❌ Fehler beim Ausführen.', flags: MessageFlags.Ephemeral }).catch(() => {});
+                    }
+                }
+                return;
+            }
         }
 
         // ==========================================
