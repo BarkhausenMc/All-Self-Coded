@@ -44,7 +44,7 @@ module.exports = async function handleModal(interaction) {
     const totalPrice = pricePerUnit * parsedAmount;
 
     const thread = await interaction.channel.threads.create({
-        name: `${emoji} ${action} - ${ingameName}`,
+        name: `${emoji} ${action} - ${spawnerEmoji} ${spawnerType} - 📦 Menge: ${amount}`,
         type: ChannelType.PrivateThread,
         invitable: false
     });
@@ -143,7 +143,7 @@ module.exports = async function handleModal(interaction) {
         components: [
             new ContainerBuilder()
                 .addTextDisplayComponents(
-                    new TextDisplayBuilder().setContent(`✅ Dein Trade-Thread wurde erstellt: <#${thread.id}>`)
+                    new TextDisplayBuilder().setContent(`✅ Dein Trade-Ticket wurde erstellt: <#${thread.id}>`)
                 )
         ],
         flags: MessageFlags.IsComponentsV2
