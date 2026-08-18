@@ -15,7 +15,7 @@ module.exports = function buildActionButtonRow(data) {
             new ButtonBuilder()
                 .setCustomId('freigeben')
                 .setLabel('Freigeben')
-                .setStyle(ButtonStyle.Secondary)
+                .setStyle(ButtonStyle.Primary)
                 .setEmoji('🔓'),
             new ButtonBuilder()
                 .setCustomId('abbruch')
