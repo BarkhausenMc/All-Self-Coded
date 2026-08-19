@@ -27,7 +27,7 @@ module.exports = {
         }
 
         if (!interaction.member.roles.cache.has(constants.TRADER_ADMIN_ROLE_ID)) {
-            await interaction.editReply({ content: '❌ Nur Trader Admins dürfen Ankündigungen machen!' });
+            await interaction.editReply({ content: '❌ Nur Trader Admins!' });
             return;
         }
 
@@ -46,7 +46,7 @@ module.exports = {
             const typLabel = change.type === 'ankauf' ? '🛒 Ankauf' : '💰 Verkauf';
             
             const oldStr = change.oldValue === 'Stop' ? 'GESTOPPT' : `${parseFloat(change.oldValue).toFixed(1)}M`;
-            const newStr = change.newValue === 'Stop' ? 'GESTOPTT' : `${parseFloat(change.newValue).toFixed(1)}M`;
+            const newStr = change.newValue === 'Stop' ? 'GESTOPPT' : `${parseFloat(change.newValue).toFixed(1)}M`;
             
             let arrow;
             if (change.newValue === 'Stop') arrow = '🔴';
@@ -66,21 +66,16 @@ module.exports = {
 
         const container = new ContainerBuilder()
             .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(
-                    `## 📢 ${titel}\n\n` 
-                )
+                new TextDisplayBuilder().setContent(`## 📢 ${titel}\n\n`)
+            )
+            .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(`> *Folgende Preise wurden geändert:*\n` + changeLines)
             )
             .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
             .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
-                    `> *Folgende Preise wurden geändert:*\n` +
-                    changeLines                    
-                )
-            )
-            .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
-            .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(
-                    `> 📋 Unsere **Aktuelle Preise** siehst du im Trading Panel.\n` +
+                    `> 📋 Unsere **Aktuellen Preise** siehst du im Trading Panel.\n` +
                     `||Geändert von <@${interaction.user.id}>||\n` +
                     `${rolePing}`
                 )
@@ -99,9 +94,9 @@ module.exports = {
             try {
                 const lastMsg = await channel.messages.fetch(lastMessageId);
                 await lastMsg.delete();
-                console.log('🗑️ Alte Announce-Nachricht gelöscht:', lastMessageId);
+                console.log('🗑️ Alte Announce gelöscht:', lastMessageId);
             } catch (err) {
-                console.log('⚠️ Alte Announce nicht gefunden/gelöscht:', err.message);
+                console.log('⚠️ Alte Announce nicht gefunden:', err.message);
             }
         }
 
@@ -119,14 +114,14 @@ module.exports = {
         const apiResult = await pushPricesToApi();
 
         if (apiResult.success) {
-            console.log(`✅ Preise an Partner-API gepusht: ${apiResult.pushed} Spawner-Typen`);
+            console.log(apiResult.shortSuccess);
             await interaction.editReply({
-                content: `✅ Ankündigung gesendet in <#${announceChannelId}>!\n🌐 **Partner-API:** ${apiResult.pushed} Spawner-Typen synchronisiert.`
+                content: `✅ Ankündigung gesendet in <#${announceChannelId}>!\n${apiResult.shortSuccess}`
             });
         } else {
-            console.error('❌ Partner-API Push fehlgeschlagen:', apiResult.error);
+            console.error('❌ API Push:', apiResult.error);
             await interaction.editReply({
-                content: `✅ Ankündigung gesendet in <#${announceChannelId}>!\n⚠️ **Partner-API Sync fehlgeschlagen:** ${apiResult.error}`
+                content: `✅ Ankündigung gesendet in <#${announceChannelId}>!\n⚠️ ${apiResult.shortError}`
             });
         }
     }
