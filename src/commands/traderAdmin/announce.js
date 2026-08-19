@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, MessageFlags } = require('discord.js');
 const constants = require('../../config/constants');
 const store = require('../../data/store');
+const { pushPricesToApi } = require('../../utils/partnerApi');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -45,7 +46,7 @@ module.exports = {
             const typLabel = change.type === 'ankauf' ? '🛒 Ankauf' : '💰 Verkauf';
             
             const oldStr = change.oldValue === 'Stop' ? 'GESTOPPT' : `${parseFloat(change.oldValue).toFixed(1)}M`;
-            const newStr = change.newValue === 'Stop' ? 'GESTOPPT' : `${parseFloat(change.newValue).toFixed(1)}M`;
+            const newStr = change.newValue === 'Stop' ? 'GESTOPTT' : `${parseFloat(change.newValue).toFixed(1)}M`;
             
             let arrow;
             if (change.newValue === 'Stop') arrow = '🔴';
@@ -114,6 +115,19 @@ module.exports = {
 
         store.setLastAnnounceMessageId(newMessage.id);
 
-        await interaction.editReply({ content: `✅ Ankündigung gesendet in <#${announceChannelId}>!` });
+        // === PREISE AN PARTNER-API PUSHEN ===
+        const apiResult = await pushPricesToApi();
+
+        if (apiResult.success) {
+            console.log(`✅ Preise an Partner-API gepusht: ${apiResult.pushed} Spawner-Typen`);
+            await interaction.editReply({
+                content: `✅ Ankündigung gesendet in <#${announceChannelId}>!\n🌐 **Partner-API:** ${apiResult.pushed} Spawner-Typen synchronisiert.`
+            });
+        } else {
+            console.error('❌ Partner-API Push fehlgeschlagen:', apiResult.error);
+            await interaction.editReply({
+                content: `✅ Ankündigung gesendet in <#${announceChannelId}>!\n⚠️ **Partner-API Sync fehlgeschlagen:** ${apiResult.error}`
+            });
+        }
     }
 };
