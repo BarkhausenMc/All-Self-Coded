@@ -49,29 +49,38 @@ async function pushPricesToApi() {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${API_TOKEN}`,
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'User-Agent': 'HugoSMP-TraderBot/1.0',
+                'CF-Access-Client-Id': process.env.CF_ACCESS_CLIENT_ID || '',
+                'CF-Access-Client-Secret': process.env.CF_ACCESS_CLIENT_SECRET || ''
             },
-            body: JSON.stringify({ offers })
+            body: JSON.stringify({ offers }),
+            redirect: 'follow'
         });
 
         const responseText = await response.text().catch(() => '');
 
         if (!response.ok) {
             // Cloudflare-Block erkennen
-            if (responseText.includes('cloudflare') || responseText.includes('Just a moment')) {
+            if (responseText.includes('cloudflare') || responseText.includes('Just a moment') || response.status === 403) {
+                console.log('🔒 Cloudflare Response (erste 500 chars):', responseText.substring(0, 500));
                 return {
                     success: false,
                     error: `Cloudflare Block (${response.status})`,
-                    shortError: '⚠️ Cloudflare-Block – API-Token prüfen'
+                    shortError: `⚠️ Cloudflare blockt (${response.status}) – Team kontaktieren`
                 };
             }
             
             return {
                 success: false,
-                error: `HTTP ${response.status}`,
+                error: `HTTP ${response.status}: ${responseText.substring(0, 200)}`,
                 shortError: `Fehler: HTTP ${response.status}`
             };
         }
+
+        let result = {};
+        try { result = JSON.parse(responseText); } catch (_) {}
 
         const pushed = offers.length;
         return { 
