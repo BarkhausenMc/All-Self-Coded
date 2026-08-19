@@ -31,8 +31,9 @@ async function pushPricesToApi() {
         const ankauf = store.getPrice(botName, 'ankauf');
         const verkauf = store.getPrice(botName, 'verkauf');
 
-        const sellPrice = ankauf === 'Stop' ? null : Math.round(ankauf * 1_000_000);
-        const buyPrice  = verkauf === 'Stop' ? null : Math.round(verkauf * 1_000_000);
+        // ⭐ GETAUSCHT: ankauf = buy, verkauf = sell
+        const buyPrice  = ankauf === 'Stop' ? null : Math.round(ankauf * 1_000_000);
+        const sellPrice = verkauf === 'Stop' ? null : Math.round(verkauf * 1_000_000);
 
         offers.push({ mobId, buy: buyPrice, sell: sellPrice });
     }
@@ -51,9 +52,7 @@ async function pushPricesToApi() {
                 'Authorization': `Bearer ${API_TOKEN}`,
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
-                'User-Agent': 'HugoSMP-TraderBot/1.0',
-                'CF-Access-Client-Id': process.env.CF_ACCESS_CLIENT_ID || '',
-                'CF-Access-Client-Secret': process.env.CF_ACCESS_CLIENT_SECRET || ''
+                'User-Agent': 'HugoSMP-TraderBot/1.0'
             },
             body: JSON.stringify({ offers }),
             redirect: 'follow'
@@ -62,7 +61,6 @@ async function pushPricesToApi() {
         const responseText = await response.text().catch(() => '');
 
         if (!response.ok) {
-            // Cloudflare-Block erkennen
             if (responseText.includes('cloudflare') || responseText.includes('Just a moment') || response.status === 403) {
                 console.log('🔒 Cloudflare Response (erste 500 chars):', responseText.substring(0, 500));
                 return {
