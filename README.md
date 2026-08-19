@@ -1,1 +1,1 @@
-# All-Self-Coded
+Yayk Clan Spawner trading Bot
