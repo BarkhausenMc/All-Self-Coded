@@ -161,13 +161,13 @@ function buildPricePanel() {
         return `${emoji} ${name.padEnd(12)} ${ankauf.padStart(10)}  ${verkauf.padStart(10)}`;
     }).join('\n');
 
-    // === BESTAND ALS KOMPAKTE SÄTZE ===
+    // === BESTAND ALS EINZELNE ZEILEN IM CODE-BLOCK ===
     const stockLines = Object.entries(constants.prices).map(([name]) => {
         const stock = getInventory(name);
         const emoji = constants.spawnerEmojis[name] || '📦';
-        const stockStr = stock > 0 ? `**${stock}** Stück` : '**0** Stück';
-        return `${emoji} ${name}: ${stockStr}`;
-    }).join(' • ');
+        // Format: "💥 Creeper: 0 Stück"
+        return `${emoji} ${name}: ${stock} Stück`;
+    }).join('\n');
 
     const container = new ContainerBuilder()
         .addTextDisplayComponents(
@@ -186,8 +186,10 @@ function buildPricePanel() {
         .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(
-                `### 📦 • AKTUELLER BESTAND\n` +
-                `${stockLines}`
+                '### 📦 • AKTUELLER BESTAND\n' +
+                '```\n' +
+                stockLines + '\n' +
+                '```'
             )
         )
         .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
