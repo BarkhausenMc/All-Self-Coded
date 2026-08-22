@@ -166,7 +166,7 @@ function buildPricePanel() {
         const stock = getInventory(name);
         const emoji = constants.spawnerEmojis[name] || '📦';
         // Format: "💥 Creeper: `5` Stück" (Nur die Zahl in Backticks)
-        return `**${emoji} ${name}:** \n__*${stock} Stk.*__\n`;
+        return `**${emoji} ${name}:** \`__*${stock} Stk.*__\``;
     }).join('\n');
 
     const container = new ContainerBuilder()
