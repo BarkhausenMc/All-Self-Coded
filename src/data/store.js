@@ -183,18 +183,18 @@ function buildPricePanel() {
                 '```'
             )
         )
-        .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
-        // === NEU: BESTAND SEKTION ===
-        .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(
-                '### 📦 • AKTUELLER BESTAND\n' +
-                '```\n' +
-                'SPAWNER              LAGER\n' +
-                '────────────────────────────\n' +
-                stockLines + '\n' +
-                '```'
-            )
-        )
+        // .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
+        // // === NEU: BESTAND SEKTION ===
+        // .addTextDisplayComponents(
+        //     new TextDisplayBuilder().setContent(
+        //         '### 📦 • AKTUELLER BESTAND\n' +
+        //         '```\n' +
+        //         'SPAWNER              LAGER\n' +
+        //         '────────────────────────────\n' +
+        //         stockLines + '\n' +
+        //         '```'
+        //     )
+        // )
         .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent('💰 **VERKAUFEN** — Du **verkaufst** uns deine Spawner')
