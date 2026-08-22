@@ -161,12 +161,12 @@ function buildPricePanel() {
         return `${emoji} ${name.padEnd(12)} ${ankauf.padStart(10)}  ${verkauf.padStart(10)}`;
     }).join('\n');
 
-    // === BESTAND ALS EINZELNE ZEILEN IM CODE-BLOCK ===
+    // === BESTAND MIT INLINE CODE FÜR DIE ZAHL ===
     const stockLines = Object.entries(constants.prices).map(([name]) => {
         const stock = getInventory(name);
         const emoji = constants.spawnerEmojis[name] || '📦';
-        // Format: "💥 Creeper: 0 Stück"
-        return `${emoji} ${name}: ${stock} Stück`;
+        // Format: "💥 Creeper: `5` Stück" (Nur die Zahl in Backticks)
+        return `${emoji} ${name}: \`${stock}\` Stück`;
     }).join('\n');
 
     const container = new ContainerBuilder()
@@ -186,10 +186,8 @@ function buildPricePanel() {
         .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(
-                '### 📦 • AKTUELLER BESTAND\n' +
-                '```\n' +
-                stockLines + '\n' +
-                '```'
+                `### 📦 • AKTUELLER BESTAND\n` +
+                `${stockLines}`
             )
         )
         .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
@@ -219,7 +217,6 @@ function buildPricePanel() {
 
     return [container, row];
 }
-
 async function updatePricePanel(client) {
     const messageId = getPanelMessageId();
     const channelId = getPanelChannelId();
