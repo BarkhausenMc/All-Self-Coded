@@ -19,7 +19,8 @@ let data = {
     vouches: [],
     traderStats: {},
     priceChanges: [],
-    lastAnnounceMessageId: null  // ← NEU!
+    inventory: {},
+    lastAnnounceMessageId: null
 };
 
 function loadData() {
@@ -33,16 +34,25 @@ function loadData() {
         if (!data.vouches) data.vouches = [];
         if (!data.traderStats) data.traderStats = {};
         if (!data.priceChanges) data.priceChanges = [];
+        if (!data.inventory) data.inventory = {};
         if (data.lastAnnounceMessageId === undefined) data.lastAnnounceMessageId = null;
+        
+        // Bestand für alle Spawner initialisieren (falls noch nicht vorhanden)
+        for (const spawnerName of Object.keys(constants.prices)) {
+            if (data.inventory[spawnerName] === undefined) {
+                data.inventory[spawnerName] = 0;
+            }
+        }
         
         console.log('✅ Datenbank geladen:', Object.keys(data.trades).length, 'aktive Trades');
         console.log('📊 Trader-Stats:', Object.keys(data.traderStats).length, 'Trader erfasst');
+        console.log('📦 Bestand:', JSON.stringify(data.inventory));
         if (data.panelMessageId) console.log('📌 Panel Message ID:', data.panelMessageId);
         if (data.panelChannelId) console.log('📌 Panel Channel ID:', data.panelChannelId);
         if (data.lastAnnounceMessageId) console.log('📢 Last Announce Message ID:', data.lastAnnounceMessageId);
     } catch (err) {
         console.error('❌ Fehler beim Laden:', err);
-        data = { tradeCounters: {}, trades: {}, vouches: [], traderStats: {}, priceChanges: [], lastAnnounceMessageId: null };
+        data = { tradeCounters: {}, trades: {}, vouches: [], traderStats: {}, priceChanges: [], inventory: {}, lastAnnounceMessageId: null };
     }
 }
 
@@ -114,12 +124,29 @@ function togglePrice(spawnerName, type) {
     return data.prices[spawnerName][type];
 }
 
+// === INVENTORY FUNCTIONS ===
+function getInventory(spawnerName) {
+    return data.inventory[spawnerName] || 0;
+}
+
+function adjustInventory(spawnerName, amount) {
+    if (!data.inventory) data.inventory = {};
+    if (data.inventory[spawnerName] === undefined) data.inventory[spawnerName] = 0;
+    data.inventory[spawnerName] += amount;
+    // Bestand kann nicht negativ sein
+    if (data.inventory[spawnerName] < 0) data.inventory[spawnerName] = 0;
+    saveData();
+}
+
+function getAllInventory() {
+    return data.inventory || {};
+}
+
 function getPanelMessageId() { return data.panelMessageId || null; }
 function setPanelMessageId(messageId) { data.panelMessageId = messageId; saveData(); }
 function getPanelChannelId() { return data.panelChannelId || null; }
 function setPanelChannelId(channelId) { data.panelChannelId = channelId; saveData(); }
 
-// ⭐ LAST ANNOUNCE MESSAGE ID FUNCTIONS
 function getLastAnnounceMessageId() { return data.lastAnnounceMessageId || null; }
 function setLastAnnounceMessageId(messageId) { data.lastAnnounceMessageId = messageId; saveData(); }
 
@@ -134,6 +161,14 @@ function buildPricePanel() {
         return `${emoji} ${name.padEnd(12)} ${ankauf.padStart(10)}  ${verkauf.padStart(10)}`;
     }).join('\n');
 
+    // === BESTAND ZEILEN ===
+    const stockLines = Object.entries(constants.prices).map(([name]) => {
+        const stock = getInventory(name);
+        const emoji = constants.spawnerEmojis[name] || '📦';
+        const stockStr = stock > 0 ? `${stock} Stück` : '— Kein Bestand';
+        return `${emoji} ${name.padEnd(12)} ${stockStr.padStart(10)}`;
+    }).join('\n');
+
     const container = new ContainerBuilder()
         .addTextDisplayComponents(
             new TextDisplayBuilder().setContent('## :shopping_cart: • SPAWNER TRADING • :moneybag:\n*Yayks Spawner Trading*\n||*Only Trusted Trader, Faire Preise :purple_heart:*||')
@@ -145,6 +180,18 @@ function buildPricePanel() {
                 'SPAWNER      🛒ANKAUF    💰VERKAUF\n' +
                 '────────────────────────────────────\n' +
                 priceLines + '\n' +
+                '```'
+            )
+        )
+        .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
+        // === NEU: BESTAND SEKTION ===
+        .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+                '### 📦 • AKTUELLER BESTAND\n' +
+                '```\n' +
+                'SPAWNER              LAGER\n' +
+                '────────────────────────────\n' +
+                stockLines + '\n' +
                 '```'
             )
         )
@@ -207,6 +254,7 @@ module.exports = {
     get trades() { return data.trades; },
     get vouches() { return data.vouches; },
     get traderStats() { return data.traderStats; },
+    get inventory() { return data.inventory; },
     save: saveData,
     reload: loadData,
     getPrice,
@@ -221,5 +269,8 @@ module.exports = {
     getLastAnnounceMessageId,
     setLastAnnounceMessageId,
     buildPricePanel,
-    updatePricePanel
+    updatePricePanel,
+    getInventory,
+    adjustInventory,
+    getAllInventory
 };

@@ -20,7 +20,7 @@ function findTrade(channelId) {
     console.warn(`Verfügbare Keys:`, Object.keys(store.trades));
     return null;
 }
-//nach vouch
+
 async function logTrade(guild, trade, status) {
     const logChannel = guild.channels.cache.get(constants.LOG_CHANNEL_ID);
     if (!logChannel) return;
@@ -65,7 +65,7 @@ async function forceCloseVouchWithChannel(channel, trade, guild) {
                 .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(1))
                 .addTextDisplayComponents(
                     new TextDisplayBuilder().setContent(
-                        `**${trade.emoji} Geschäft:** ${trade.action} ||(aus sicht des Kunden)||\n` +
+                        `**${trade.emoji} Geschäft:** ${trade.action} ||(aus Sicht des Kunden)||\n` +
                         `**${trade.spawnerEmoji} Spawner:** ${trade.spawnerType}\n` +
                         `**📦 Menge:** ${trade.amount}\n` +
                         `**💰 Gesamtpreis:** ${trade.totalPrice.toFixed(1)}M\n`
@@ -112,6 +112,20 @@ async function forceCloseVouchWithChannel(channel, trade, guild) {
                 stats.starCount += 1;
             }
             store.save();
+        }
+
+        // === NEU: BESTAND AKTUALISIEREN ===
+        // Ankauf = Wir (der Server) kaufen dem Spieler ab → Bestand ERHÖHEN
+        // Verkauf = Wir (der Server) verkaufen dem Spieler → Bestand VERRINGERN
+        const inventoryDelta = trade.action === 'Ankauf' ? trade.amount : -trade.amount;
+        store.adjustInventory(trade.spawnerType, inventoryDelta);
+        console.log(`📦 Bestand aktualisiert: ${trade.spawnerType} ${inventoryDelta > 0 ? '+' : ''}${inventoryDelta} (Trade #${trade.handNummer})`);
+
+        // === NEU: PRICE PANEL AUTO-UPDATE ===
+        try {
+            await store.updatePricePanel(global.client);
+        } catch (err) {
+            console.log('⚠️ Panel auto-update fehlgeschlagen:', err.message);
         }
 
         await logTrade(guild, trade, `✅ ABGESCHLOSSEN (${(trade.vouches || []).length}/2 Bewertungen)`);
@@ -297,68 +311,63 @@ module.exports = async function handleButton(interaction) {
     }
 
     // === ABBRUCH BUTTON ===
-if (interaction.customId === 'abbruch') {
-    const channelIdStr = String(interaction.channelId);
-    const trade = findTrade(channelIdStr);  // <- ERSTE PRÜFUNG!
+    if (interaction.customId === 'abbruch') {
+        const channelIdStr = String(interaction.channelId);
+        const trade = findTrade(channelIdStr);
 
-    if (!trade) {
-        // Wenn kein Trade → sofort antworten und RAUS
-        await interaction.reply({
-            content: '❌ Trade nicht gefunden oder bereits geschlossen.',
+        if (!trade) {
+            await interaction.reply({
+                content: '❌ Trade nicht gefunden oder bereits geschlossen.',
+                flags: MessageFlags.Ephemeral
+            });
+            return;
+        }
+
+        await interaction.deferUpdate();
+
+        const timeout = vouchTimeouts.get(channelIdStr);
+        if (timeout) { clearTimeout(timeout); vouchTimeouts.delete(channelIdStr); }
+
+        trade.cancelled = true;
+        store.save();
+
+        try {
+            await updateTradeMessage(interaction.channel, trade);
+        } catch (err) {
+            console.error('updateTradeMessage error (abbruch):', err.message);
+        }
+
+        const abbruchContainer = new ContainerBuilder()
+            .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(
+                    `## ❌ Trade abgebrochen\n\n` +
+                    `Der Handel #${trade.handNummer} wurde von <@${interaction.user.id}> abgebrochen.\n` +
+                    `Das Ticket wird in **5 Sekunden** gelöscht...`
+                )
+            );
+
+        await interaction.channel.send({ components: [abbruchContainer], flags: MessageFlags.IsComponentsV2 });
+
+        await interaction.followUp({
+            content: `✅ Deine Anfrage wurde verarbeitet. Das Ticket wird jetzt geschlossen.`,
             flags: MessageFlags.Ephemeral
         });
-        return;  // <- SOFORT RETURN, NICHT WEITERMACHEN!
+
+        const guild = interaction.guild;
+
+        setTimeout(async () => {
+            try {
+                await logTrade(guild, trade, '❌ ABGEBROCHEN');
+                await interaction.channel.delete();
+                delete store.trades[channelIdStr];
+                store.save();
+            } catch (err) {
+                console.error('Delete error:', err.message);
+            }
+        }, 5000);
+
+        return;
     }
-
-    // Nur wenn Trade existiert: deferUpdate aufrufen
-    await interaction.deferUpdate();
-
-    // Timeout löschen
-    const timeout = vouchTimeouts.get(channelIdStr);
-    if (timeout) { clearTimeout(timeout); vouchTimeouts.delete(channelIdStr); }
-
-    trade.cancelled = true;
-    store.save();
-
-    try {
-        await updateTradeMessage(interaction.channel, trade);
-    } catch (err) {
-        console.error('updateTradeMessage error (abbruch):', err.message);
-    }
-
-    // NUR NOCH EINEN Container senden
-    const abbruchContainer = new ContainerBuilder()
-        .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(
-                `## ❌ Trade abgebrochen\n\n` +
-                `Der Handel #${trade.handNummer} wurde von <@${interaction.user.id}> abgebrochen.\n` +
-                `Das Ticket wird in **5 Sekunden** gelöscht...`
-            )
-        );
-
-    await interaction.channel.send({ components: [abbruchContainer], flags: MessageFlags.IsComponentsV2 });
-
-    // Nur ephemeral FollowUp (kein separater Countdown-Container!)
-    await interaction.followUp({
-        content: `✅ Deine Anfrage wurde verarbeitet. Das Ticket wird jetzt geschlossen.`,
-        flags: MessageFlags.Ephemeral
-    });
-
-    const guild = interaction.guild;
-
-    setTimeout(async () => {
-        try {
-            await logTrade(guild, trade, '❌ ABGEBROCHEN');
-            await interaction.channel.delete();
-            delete store.trades[channelIdStr];
-            store.save();
-        } catch (err) {
-            console.error('Delete error:', err.message);
-        }
-    }, 5000);
-
-    return;
-}
 
     // === SPAWNER ANKAUF ===
     if (interaction.customId === 'spawner_ankaufen') {
